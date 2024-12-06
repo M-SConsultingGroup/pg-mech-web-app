@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Toaster, toast } from 'react-hot-toast';
 
 export default function Home() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function Home() {
     });
 
     if (response.ok) {
-      alert('Ticket submitted successfully');
+      toast.success('Ticket submitted successfully');
       setFormData({
         name: '',
         email: '',
@@ -41,7 +42,7 @@ export default function Home() {
       });
     } else {
       const data = await response.json();
-      alert(data.error);
+      toast.error(data.error);
     }
   };
 
@@ -124,6 +125,7 @@ export default function Home() {
           Submit
         </button>
       </form>
+      <Toaster />
     </div>
   );
 }

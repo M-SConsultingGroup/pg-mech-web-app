@@ -48,12 +48,17 @@ export const updateTicket = async (req: NextRequest) => {
 };
 
 export const getTickets = async (req: NextRequest) => {
+  let tickets;
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
-    const tickets = await Ticket.find();
+    if (id) {
+      tickets = await Ticket.findById(id);
+    }
+    tickets = await Ticket.find();
     return NextResponse.json(tickets, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ error: 'Error fetching tickets' }, { status: 204 });
+  } catch (err) {
+    const error = err as Error;
+    return NextResponse.json({ name: error.name, error: 'Error fetching tickets' }, { status: 204 });
   }
 };

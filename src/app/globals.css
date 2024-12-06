@@ -7,15 +7,20 @@
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes gradient-cycling {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+.bg-gradient-cycling {
+  background: linear-gradient(270deg, #a8c0ff, #d3e0ea, #a8c0ff, #d3e0ea);
+  background-size: 400% 400%;
+  animation: gradient-cycling 20s ease infinite;
 }

@@ -20,7 +20,7 @@
 }
 
 .bg-gradient-cycling {
-  background: linear-gradient(270deg, #a8c0ff, #d3e0ea, #a8c0ff, #d3e0ea);
+  background: linear-gradient(270deg, #7396ee, #d3e0ea, #a8c0ff, #042138);
   background-size: 400% 400%;
   animation: gradient-cycling 20s ease infinite;
 }

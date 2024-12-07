@@ -1,19 +1,15 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ITicket } from '@/common/interfaces';
 
 export default function Tickets() {
   const [tickets, setTickets] = useState<ITicket[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phoneNumber: '',
-    serviceAddress: '',
-    workOrderDescription: '',
-    timeAvailability: '',
-  });
+  const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  const [editedTicket, setEditedTicket] = useState<Partial<ITicket>>({});
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const router = useRouter();
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -25,149 +21,145 @@ export default function Tickets() {
     fetchTickets();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+  const handleEditClick = (ticket: ITicket) => {
+    setEditingTicketId(ticket._id || null);
+    setEditedTicket(ticket);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const response = await fetch('/api/tickets', {
-      method: 'POST',
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setEditedTicket((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveClick = async (ticketId: string) => {
+    const response = await fetch(`/api/tickets?id=${ticketId}`, {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(formData),
+      body: JSON.stringify(editedTicket),
     });
 
     if (response.ok) {
-      const newTicket = await response.json();
-      setTickets((prevTickets) => [...prevTickets, newTicket]);
-      setShowForm(false);
-      setFormData({
-        name: '',
-        email: '',
-        phoneNumber: '',
-        serviceAddress: '',
-        workOrderDescription: '',
-        timeAvailability: '',
-      });
+      const updatedTicket = await response.json();
+      setTickets((prev) =>
+        prev.map((ticket) => (ticket._id === ticketId ? updatedTicket : ticket))
+      );
+      setEditingTicketId(null);
     } else {
-      const data = await response.json();
-      alert(data.error);
+      // Handle error
+      console.error('Failed to update ticket');
     }
+  };
+
+  const handleRowToggle = (ticketId: string) => {
+    setExpandedRows((prev) => {
+      const newExpandedRows = new Set(prev);
+      if (newExpandedRows.has(ticketId)) {
+        newExpandedRows.delete(ticketId);
+      } else {
+        newExpandedRows.add(ticketId);
+      }
+      return newExpandedRows;
+    });
   };
 
   return (
     <div className="min-h-screen p-8 pb-20">
-      <h1 className="text-2xl font-bold mb-4">Tickets</h1>
-      <button
-        onClick={() => setShowForm(!showForm)}
-        className="bg-blue-500 text-white p-2 rounded mb-4"
-      >
-        {showForm ? 'Cancel' : 'Create New Ticket'}
-      </button>
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-4">
-          <div className="mb-2">
-            <label className="block mb-1">Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="border p-2 rounded w-full"
-              required
-            />
-          </div>
-          <div className="mb-2">
-            <label className="block mb-1">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="border p-2 rounded w-full"
-              required
-            />
-          </div>
-          <div className="mb-2">
-            <label className="block mb-1">Phone Number</label>
-            <input
-              type="text"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleInputChange}
-              className="border p-2 rounded w-full"
-              required
-            />
-          </div>
-          <div className="mb-2">
-            <label className="block mb-1">Service Address</label>
-            <input
-              type="text"
-              name="serviceAddress"
-              value={formData.serviceAddress}
-              onChange={handleInputChange}
-              className="border p-2 rounded w-full"
-              required
-            />
-          </div>
-          <div className="mb-2">
-            <label className="block mb-1">Work Order Description</label>
-            <textarea
-              name="workOrderDescription"
-              value={formData.workOrderDescription}
-              onChange={handleInputChange}
-              className="border p-2 rounded w-full"
-              required
-            />
-          </div>
-          <div className="mb-2">
-            <label className="block mb-1">Time Availability</label>
-            <input
-              type="text"
-              name="timeAvailability"
-              value={formData.timeAvailability}
-              onChange={handleInputChange}
-              className="border p-2 rounded w-full"
-              required
-            />
-          </div>
-          <button type="submit" className="bg-green-500 text-white p-2 rounded">
-            Submit
-          </button>
-        </form>
-      )}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Tickets</h1>
+        <button
+          onClick={() => router.push('/')}
+          className="bg-blue-500 text-white p-2 rounded"
+        >
+          + NEW
+        </button>
+      </div>
       <table className="min-w-full border-collapse border border-gray-400">
         <thead>
           <tr>
-            <th className="border border-gray-400 p-2">Ticket Number</th>
-            <th className="border border-gray-400 p-2">Name</th>
-            <th className="border border-gray-400 p-2">Email</th>
-            <th className="border border-gray-400 p-2">Phone Number</th>
-            <th className="border border-gray-400 p-2">Service Address</th>
-            <th className="border border-gray-400 p-2">Work Order Description</th>
-            <th className="border border-gray-400 p-2">Time Availability</th>
-            <th className="border border-gray-400 p-2">Status</th>
-            <th className="border border-gray-400 p-2">Created At</th>
-            <th className="border border-gray-400 p-2">Updated At</th>
+            <th className="border border-gray-400 p-2 pr-4">Ticket Number</th>
+            <th className="border border-gray-400 p-2 pr-4">Name</th>
+            <th className="border border-gray-400 p-2 pr-4">Service Address</th>
+            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Email</th>
+            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Phone Number</th>
+            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Work Order Description</th>
+            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Time Availability</th>
+            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Status</th>
+            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Created At</th>
+            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Updated At</th>
+            <th className="border border-gray-400 p-2 pr-4">Actions</th>
           </tr>
         </thead>
         <tbody>
           {tickets.map((ticket: ITicket) => (
-            <tr key={ticket._id}>
-              <td className="border border-gray-400 p-2">{ticket.ticketNumber}</td>
-              <td className="border border-gray-400 p-2">{ticket.name}</td>
-              <td className="border border-gray-400 p-2">{ticket.email}</td>
-              <td className="border border-gray-400 p-2">{ticket.phoneNumber}</td>
-              <td className="border border-gray-400 p-2">{ticket.serviceAddress}</td>
-              <td className="border border-gray-400 p-2">{ticket.workOrderDescription}</td>
-              <td className="border border-gray-400 p-2">{ticket.timeAvailability}</td>
-              <td className="border border-gray-400 p-2">{ticket.status}</td>
-              <td className="border border-gray-400 p-2">{new Date(ticket.createdAt).toLocaleString()}</td>
-              <td className="border border-gray-400 p-2">{new Date(ticket.updatedAt).toLocaleString()}</td>
-            </tr>
+            <React.Fragment key={ticket._id}>
+              <tr>
+                <td className="border border-gray-400 p-2 pr-4">{ticket.ticketNumber}</td>
+                <td className="border border-gray-400 p-2 pr-4">{ticket.name}</td>
+                <td className="border border-gray-400 p-2 pr-4">{ticket.serviceAddress}</td>
+                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.email}</td>
+                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.phoneNumber}</td>
+                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.workOrderDescription}</td>
+                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.timeAvailability}</td>
+                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
+                  {editingTicketId === ticket._id ? (
+                    <select
+                      name="status"
+                      value={editedTicket.status}
+                      onChange={handleInputChange}
+                      className="border p-2 rounded"
+                    >
+                      <option value="open">Open</option>
+                      <option value="in-progress">In Progress</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                  ) : (
+                    ticket.status
+                  )}
+                </td>
+                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{new Date(ticket.createdAt).toLocaleString()}</td>
+                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{new Date(ticket.updatedAt).toLocaleString()}</td>
+                <td className="border border-gray-400 p-2 pr-4">
+                  <div className="flex items-center">
+                    {editingTicketId === ticket._id ? (
+                      <button
+                        onClick={() => handleSaveClick(ticket._id!)}
+                        className="bg-green-500 text-white p-2 rounded"
+                      >
+                        Save
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleEditClick(ticket)}
+                        className="bg-yellow-500 text-white p-2 rounded"
+                      >
+                        <img src="/edit-pen.svg" alt="Edit" className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleRowToggle(ticket._id!)}
+                      className="ml-2 bg-gray-500 text-white p-2 rounded md:hidden w-4"
+                    >
+                      {expandedRows.has(ticket._id!) ? '▲' : '▼'}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {expandedRows.has(ticket._id!) && (
+                <tr className="md:hidden">
+                  <td colSpan={4} className="border border-gray-400">
+                    <div><strong>Email:</strong> {ticket.email}</div>
+                    <div><strong>Phone Number:</strong> {ticket.phoneNumber}</div>
+                    <div><strong>Work Order Description:</strong> {ticket.workOrderDescription}</div>
+                    <div><strong>Time Availability:</strong> {ticket.timeAvailability}</div>
+                    <div><strong>Status:</strong> {ticket.status}</div>
+                    <div><strong>Created At:</strong> {new Date(ticket.createdAt).toLocaleString()}</div>
+                    <div><strong>Updated At:</strong> {new Date(ticket.updatedAt).toLocaleString()}</div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
           ))}
         </tbody>
       </table>

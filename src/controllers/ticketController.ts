@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Ticket from '@/models/ticket';
 import Sequence from '@/models/sequence';
+import moment from 'moment-timezone';
 
 const generateTicketNumber = async () => {
-  const date = new Date();
-  const currentDate = date.toISOString().split('T')[0];
+  const date = moment().tz('America/Chicago'); // Central Time
+  const currentDate = date.format('YYYY-MM-DD');
 
   let sequenceDoc = await Sequence.findOne({ date: currentDate });
 
@@ -15,9 +16,9 @@ const generateTicketNumber = async () => {
   sequenceDoc.sequence += 1;
   await sequenceDoc.save();
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.year();
+  const month = date.format('MM');
+  const day = date.format('DD');
 
   return `${year}${month}${day}-${sequenceDoc.sequence.toString().padStart(4, '0')}`;
 };

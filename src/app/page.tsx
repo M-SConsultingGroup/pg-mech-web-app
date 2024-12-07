@@ -14,6 +14,7 @@ export default function Home() {
     workOrderDescription: '',
     timeAvailability: '',
   });
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -22,6 +23,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     const response = await fetch('/api/tickets', {
       method: 'POST',
       headers: {
@@ -30,8 +32,10 @@ export default function Home() {
       body: JSON.stringify(formData),
     });
 
+    setLoading(false);
+
     if (response.ok) {
-      toast.success('Ticket submitted successfully');
+      toast.success('Ticket submitted successfully', { className: 'text-xl' });
       setFormData({
         name: '',
         email: '',
@@ -42,7 +46,7 @@ export default function Home() {
       });
     } else {
       const data = await response.json();
-      toast.error(data.error);
+      toast.error(data.error, { className: 'text-xl' });
     }
   };
 
@@ -125,6 +129,7 @@ export default function Home() {
           Submit
         </button>
       </form>
+      {loading && <div className="loading-animation mt-4">Loading...</div>}
       <Toaster />
     </div>
   );

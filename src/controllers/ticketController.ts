@@ -40,6 +40,7 @@ export const updateTicket = async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const body = await req.json();
+    body.updatedAt = new Date();
     const ticket = await Ticket.findByIdAndUpdate(id, body, { new: true, runValidators: true });
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
@@ -51,18 +52,23 @@ export const updateTicket = async (req: NextRequest) => {
 };
 
 export const getTickets = async (req: NextRequest) => {
-  let tickets;
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    let tickets;
+
     if (id) {
       tickets = await Ticket.findById(id);
+      if (!tickets) {
+        return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+      }
     } else {
       tickets = await Ticket.find();
     }
+
     return NextResponse.json(tickets, { status: 200 });
   } catch (err) {
     const error = err as Error;
-    return NextResponse.json({ name: error.name, error: 'Error fetching tickets' }, { status: 204 });
+    return NextResponse.json({ name: error.name, error: 'Error fetching tickets' }, { status: 500 });
   }
 };

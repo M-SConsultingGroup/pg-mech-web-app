@@ -3,13 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ITicket } from '@/common/interfaces';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Tickets() {
   const [tickets, setTickets] = useState<ITicket[]>([]);
+  const [users, setUsers] = useState<string[]>([]);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [editedTicket, setEditedTicket] = useState<Partial<ITicket>>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const router = useRouter();
+  const { username, isAdmin } = useAuth();
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -18,12 +21,18 @@ export default function Tickets() {
       setTickets(data);
     };
 
+    const fetchUsers = async () => {
+      const response = await fetch('/api/users/getAllUsers');
+      const data = await response.json();
+      setUsers(data.map((user: { username: string }) => user.username));
+    };
+
     fetchTickets();
+    fetchUsers();
   }, []);
 
   const handleEditClick = (ticket: ITicket) => {
-    setEditingTicketId(ticket._id || null);
-    setEditedTicket(ticket);
+    router.push(`/tickets/${ticket._id}`);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -47,7 +56,6 @@ export default function Tickets() {
       );
       setEditingTicketId(null);
     } else {
-      // Handle error
       console.error('Failed to update ticket');
     }
   };
@@ -64,6 +72,10 @@ export default function Tickets() {
     });
   };
 
+  const filteredTickets = isAdmin
+    ? tickets
+    : tickets.filter((ticket) => ticket.assignedTo === username);
+
   return (
     <div className="min-h-screen p-8 pb-20">
       <div className="flex justify-between items-center mb-4">
@@ -75,34 +87,35 @@ export default function Tickets() {
           + NEW
         </button>
       </div>
-      <table className="min-w-full border-collapse border border-gray-400">
+      <table className="min border-collapse border border-gray-400 mx-auto">
         <thead>
           <tr>
             <th className="border border-gray-400 p-2 pr-4">Ticket Number</th>
             <th className="border border-gray-400 p-2 pr-4">Name</th>
             <th className="border border-gray-400 p-2 pr-4">Service Address</th>
-            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Email</th>
+            {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Email</th>}
             <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Phone Number</th>
             <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Work Order Description</th>
             <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Time Availability</th>
-            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Status</th>
-            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Created At</th>
-            <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Updated At</th>
-            <th className="border border-gray-400 p-2 pr-4">Actions</th>
+            {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Status</th>}
+            {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Assigned To</th>}
+            {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Created At</th>}
+            {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Updated At</th>}
+            {isAdmin && <th className="border border-gray-400 p-2 pr-4">Actions</th>}
           </tr>
         </thead>
         <tbody>
-          {tickets.map((ticket: ITicket) => (
+          {filteredTickets.map((ticket: ITicket) => (
             <React.Fragment key={ticket._id}>
               <tr>
                 <td className="border border-gray-400 p-2 pr-4">{ticket.ticketNumber}</td>
                 <td className="border border-gray-400 p-2 pr-4">{ticket.name}</td>
                 <td className="border border-gray-400 p-2 pr-4">{ticket.serviceAddress}</td>
-                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.email}</td>
+                {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.email}</td>}
                 <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.phoneNumber}</td>
                 <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.workOrderDescription}</td>
                 <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.timeAvailability}</td>
-                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
+                {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
                   {editingTicketId === ticket._id ? (
                     <select
                       name="status"
@@ -117,9 +130,27 @@ export default function Tickets() {
                   ) : (
                     ticket.status
                   )}
-                </td>
-                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{new Date(ticket.createdAt).toLocaleString()}</td>
-                <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{new Date(ticket.updatedAt).toLocaleString()}</td>
+                </td>}
+                {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
+                  {editingTicketId === ticket._id ? (
+                    <select
+                      name="assignedTo"
+                      value={editedTicket.assignedTo}
+                      onChange={handleInputChange}
+                      className="border p-2 rounded"
+                    >
+                      {users.map((user) => (
+                        <option key={user} value={user}>
+                          {user}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    ticket.assignedTo || 'Unassigned'
+                  )}
+                </td>}
+                {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{new Date(ticket.createdAt).toLocaleString()}</td>}
+                {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{new Date(ticket.updatedAt).toLocaleString()}</td>}
                 <td className="border border-gray-400 p-2 pr-4">
                   <div className="flex items-center">
                     {editingTicketId === ticket._id ? (
@@ -134,7 +165,7 @@ export default function Tickets() {
                         onClick={() => handleEditClick(ticket)}
                         className="bg-yellow-500 text-white p-2 rounded"
                       >
-                        <img src="/edit-pen.svg" alt="Edit" className="w-4 h-4" />
+                        Edit
                       </button>
                     )}
                     <button
@@ -154,6 +185,7 @@ export default function Tickets() {
                     <div><strong>Work Order Description:</strong> {ticket.workOrderDescription}</div>
                     <div><strong>Time Availability:</strong> {ticket.timeAvailability}</div>
                     <div><strong>Status:</strong> {ticket.status}</div>
+                    {isAdmin && <div><strong>Assigned To:</strong> {ticket.assignedTo || 'Unassigned'}</div>}
                     <div><strong>Created At:</strong> {new Date(ticket.createdAt).toLocaleString()}</div>
                     <div><strong>Updated At:</strong> {new Date(ticket.updatedAt).toLocaleString()}</div>
                   </td>

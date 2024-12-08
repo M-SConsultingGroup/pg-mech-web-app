@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Generate a token
-  const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '30m' });
+  const token = jwt.sign({ id: user._id, username: user.username, isAdmin: user.username=='admin'? true : false }, JWT_SECRET, { expiresIn: '30m' });
 
   return NextResponse.json({ message: 'Login successful', token, username: user.username }, { status: 200 });
 }

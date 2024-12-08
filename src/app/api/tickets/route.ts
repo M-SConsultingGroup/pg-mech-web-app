@@ -1,6 +1,6 @@
 import { NextRequest} from 'next/server';
 import { getTickets, createTicket, updateTicket } from '../../../controllers/ticketController';
-import connectToDatabase from '../../../lib/mongodb';
+import connectToDatabase from '@/lib/mongodb';
 
 export async function GET(req: NextRequest) {
   await connectToDatabase();

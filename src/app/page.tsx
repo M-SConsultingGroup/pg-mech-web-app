@@ -12,6 +12,7 @@ export default function Home() {
 		phoneNumber: '',
 		serviceAddress: '',
 		workOrderDescription: '',
+    tenantName: '',
 		timeAvailability: ''
 	});
 	const [loading, setLoading] = useState(false);
@@ -45,6 +46,7 @@ export default function Home() {
 				phoneNumber: '',
 				serviceAddress: '',
 				workOrderDescription: '',
+        tenantName: '',
 				timeAvailability: ''
 			});
 		} else {
@@ -111,6 +113,15 @@ export default function Home() {
 						onChange={handleInputChange}
 						className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
 						required
+					/>
+				</div>
+        <div className="mb-4">
+					<label className="block mb-2 text-gray-700">If Rental, add Tenat name and phone number</label>
+					<textarea
+						name="tennantName"
+						value={formData.tenantName}
+						onChange={handleInputChange}
+						className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
 					/>
 				</div>
 				<div className="mb-4">

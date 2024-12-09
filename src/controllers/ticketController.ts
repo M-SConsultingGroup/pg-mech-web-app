@@ -63,7 +63,7 @@ export const getTickets = async (req: NextRequest) => {
         return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
       }
     } else {
-      tickets = await Ticket.find();
+      tickets = await Ticket.find();      
     }
 
     return NextResponse.json(tickets, { status: 200 });
@@ -71,4 +71,18 @@ export const getTickets = async (req: NextRequest) => {
     const error = err as Error;
     return NextResponse.json({ name: error.name, error: 'Error fetching tickets' }, { status: 500 });
   }
+}
+
+  export const deleteTicket = async (req: NextRequest) => {
+    try {
+      const { searchParams } = new URL(req.url);
+      const id = searchParams.get('id');
+      const ticket = await Ticket.findById(id).remove();
+      if (!ticket) {
+        return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+      }
+      return NextResponse.json(ticket);
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    }
 };

@@ -1,9 +1,9 @@
 'use client';
 
-import { ITicket } from '@/common/interfaces';
-import { TICKET_STATUSES } from '@/common/constants';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { TICKET_STATUSES } from '@/common/constants';
+import { ITicket } from '@/common/interfaces';
 import { useAuth } from '@/context/AuthContext';
 
 const TicketDetails = () => {
@@ -52,19 +52,19 @@ const TicketDetails = () => {
   };
 
   const handleSaveClick = async () => {
-    const formData = new FormData();
-    Object.keys(editedTicket).forEach((key) => {
-      formData.append(key, editedTicket[key as keyof ITicket] as string);
-    });
-    if (image) {
-      formData.append('image', image);
-    }
-
+    const updatedTicket = {
+      ...editedTicket,
+      partsUsed: editedTicket.partsUsed?.split(',').map(part => part.trim()),
+    };
+  
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'PUT',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatedTicket),
     });
-
+  
     if (response.ok) {
       router.push('/tickets');
     } else {
@@ -206,7 +206,7 @@ const TicketDetails = () => {
             onChange={handleInputChange}
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
-            {TICKET_STATUSES.map((status) => (
+            {TICKET_STATUSES.filter(status => status !== 'New').map((status) => (
               <option key={status} value={status}>
                 {status}
               </option>

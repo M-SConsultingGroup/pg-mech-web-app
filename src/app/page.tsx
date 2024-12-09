@@ -35,7 +35,6 @@ export default function Home() {
 			},
 			body: JSON.stringify(formData)
 		});
-		setLoading(false);
 		if (response.ok) {
 			toast.success('Ticket submitted successfully', {
 				className: 'text-xl'
@@ -55,6 +54,7 @@ export default function Home() {
 				className: 'text-xl'
 			});
 		}
+    setLoading(false);
 	};
 
 	return (

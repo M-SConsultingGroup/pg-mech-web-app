@@ -77,7 +77,7 @@ export const getTickets = async (req: NextRequest) => {
     try {
       const { searchParams } = new URL(req.url);
       const id = searchParams.get('id');
-      const ticket = await Ticket.findById(id).remove();
+      const ticket = await Ticket.findByIdAndDelete(id);
       if (!ticket) {
         return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
       }

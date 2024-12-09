@@ -11,10 +11,17 @@ export default function CreateUser() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const authToken = localStorage.getItem('token'); // Get the auth token from local storage
+    if (!authToken) {
+      toast.error('No auth token found');
+      return;
+    }
+
     const response = await fetch('/api/users/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify({ username, password, isAdmin }),
     });
@@ -26,6 +33,10 @@ export default function CreateUser() {
       const data = await response.json();
       toast.error(data.error || 'Failed to create user');
     }
+  };
+
+  const handleCancel = () => {
+    router.push('/tickets');
   };
 
   return (
@@ -62,12 +73,21 @@ export default function CreateUser() {
             />
             <label className="text-gray-700">Admin</label>
           </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white p-2 rounded mt-4"
-          >
-            Create User
-          </button>
+          <div className="flex space-x-4">
+            <button
+              type="submit"
+              className="w-full bg-blue-500 text-white p-2 rounded mt-4"
+            >
+              Create User
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="w-full bg-gray-500 text-white p-2 rounded mt-4"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       </div>
     </div>

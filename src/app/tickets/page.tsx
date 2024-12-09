@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ITicket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
+import toast from 'react-hot-toast';
 
 export default function Tickets() {
   const { username, isAdmin } = useAuth();
@@ -20,13 +21,23 @@ export default function Tickets() {
 
   useEffect(() => {
     const fetchTickets = async () => {
-      const response = await fetch('/api/tickets');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/tickets', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setTickets(data);
     };
 
     const fetchUsers = async () => {
-      const response = await fetch('/api/users/getAllUsers');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/users/getAllUsers', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       setUsers(data.map((user: { username: string }) => user.username));
     };
@@ -73,7 +84,7 @@ export default function Tickets() {
     if (response.ok) {
       setTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
     } else {
-      console.error('Failed to delete ticket');
+      toast.error('Failed to delete ticket');
     }
   };
 
@@ -92,8 +103,10 @@ export default function Tickets() {
       if (!sortField) return 0;
       const aValue = a[sortField as keyof ITicket];
       const bValue = b[sortField as keyof ITicket];
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      if (aValue !== undefined && bValue !== undefined) {
+        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      }
       return 0;
     });
 
@@ -104,9 +117,12 @@ export default function Tickets() {
   return (
     <div className="min-h-screen p-8 pb-20 flex flex-col items-center bg-gray-100 space-y-3">
       {isAdmin && (
-        <div className="w-full bg-white p-8 rounded-lg shadow-lg">
-          <h1 className="text-3xl font-bold text-gray-800">Overview</h1>
-          <div className="mt-4">
+        <div className="w-full bg-white p-4 rounded-lg shadow-lg">
+          <h1 className="text-2xl font-bold text-gray-800">Overview</h1>
+          <div className="mt-1">
+            <p className="text-sm text-gray-800">Total New Tickets: <span className="font-bold text-gray-800">{tickets.filter(ticket => ticket.status === 'New').length}</span></p>
+          </div>
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {users.map((user) => {
               const userTickets = tickets.filter((ticket) => ticket.assignedTo === user);
               const totalTickets = userTickets.length;
@@ -114,12 +130,12 @@ export default function Tickets() {
               const closedTickets = userTickets.filter((ticket) => ticket.status === 'Closed').length;
 
               return (
-                <div key={user} className="mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800">{user}</h2>
-                  <div className="flex items-center space-x-2">
-                    <p className="text-lg text-gray-800">Total Tickets: {totalTickets}</p>
-                    <p className="text-lg text-gray-800">Open Tickets: {openTickets}</p>
-                    <p className="text-lg text-gray-800">Closed Tickets: {closedTickets}</p>
+                <div key={user} className="p-2 bg-gray-100 rounded-lg shadow-md">
+                  <h2 className="text-sm font-semibold text-gray-800">{user}</h2>
+                  <div className="mt-1">
+                    <p className="text-xs text-gray-600">Total: <span className="font-bold text-gray-800">{totalTickets}</span></p>
+                    <p className="text-xs text-gray-600">Open: <span className="font-bold text-gray-800">{openTickets}</span></p>
+                    <p className="text-xs text-gray-600">Closed: <span className="font-bold text-gray-800">{closedTickets}</span></p>
                   </div>
                 </div>
               );
@@ -226,7 +242,7 @@ export default function Tickets() {
                         </button>
                         {isAdmin && (
                           <button
-                            onClick={() => handleRowDelete(ticket._id)}
+                            onClick={() => handleRowDelete(ticket._id || '')}
                             className="border border-gray-500 p-1 rounded flex items-center"
                           >
                             <img src="/trash-bin-red.svg" alt="Delete" className="h-5 w-5" />

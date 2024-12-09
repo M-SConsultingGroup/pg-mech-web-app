@@ -2,9 +2,9 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { TICKET_STATUSES } from '@/common/constants';
 import { ITicket } from '@/common/interfaces';
 import { useAuth } from '@/context/AuthContext';
+import toast from 'react-hot-toast';
 
 const TicketDetails = () => {
   const router = useRouter();
@@ -19,18 +19,35 @@ const TicketDetails = () => {
   useEffect(() => {
     if (ticketId) {
       const fetchTicket = async () => {
-        const response = await fetch(`/api/tickets?id=${ticketId}`);
+        const authToken = localStorage.getItem('token');
+        if (!authToken) {
+          return;
+        }
+
+        const response = await fetch(`/api/tickets?id=${ticketId}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+        });
         if (response.ok) {
           const data = await response.json();
           setTicket(data);
           setEditedTicket(data);
         } else {
-          console.error('Failed to fetch ticket');
         }
       };
 
       const fetchUsers = async () => {
-        const response = await fetch('/api/users/getAllUsers');
+        const authToken = localStorage.getItem('token');
+        if (!authToken) {
+          return;
+        }
+
+        const response = await fetch('/api/users/getAllUsers', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+        });
         const data = await response.json();
         setUsers(data.map((user: { username: string }) => user.username));
       };
@@ -52,33 +69,61 @@ const TicketDetails = () => {
   };
 
   const handleSaveClick = async () => {
+    const authToken = localStorage.getItem('token');
+    if (!authToken) {
+      return;
+    }
+
     const updatedTicket = {
       ...editedTicket,
-      partsUsed: editedTicket.partsUsed?.split(',').map(part => part.trim()),
+      partsUsed: editedTicket.partsUsed?.map(part => part.trim()),
     };
-  
+
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify(updatedTicket),
     });
-  
+
     if (response.ok) {
       router.push('/tickets');
     } else {
-      console.error('Failed to update ticket');
+      toast.error('Failed to update ticket ... Try again later');
     }
   };
 
+  const handleCancel = () => {
+    router.push('/tickets');
+  };
+
   if (!ticket) {
-    return <div>Loading...</div>;
+    toast.loading('Loading ticket...');  
   }
 
   return (
     <div className="min-h-screen p-8 pb-20 flex flex-col items-center justify-center bg-gray-100">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Edit Ticket</h1>
+      <div className="flex items-center mb-6">
+        <button onClick={() => router.push('/tickets')} className="mr-4">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            className="w-6 h-6 text-gray-800"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+        <h1 className="text-3xl font-bold text-gray-800">Edit Ticket</h1>
+      </div>
       <form className="w-full max-w-lg bg-white p-8 rounded-lg shadow-lg">
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Ticket Number</label>
@@ -88,6 +133,7 @@ const TicketDetails = () => {
             value={editedTicket.ticketNumber || ''}
             onChange={handleInputChange}
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            disabled
           />
         </div>
         <div className="mb-4">
@@ -98,6 +144,7 @@ const TicketDetails = () => {
             value={editedTicket.name || ''}
             onChange={handleInputChange}
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            disabled
           />
         </div>
         <div className="mb-4">
@@ -108,6 +155,7 @@ const TicketDetails = () => {
             value={editedTicket.serviceAddress || ''}
             onChange={handleInputChange}
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            disabled
           />
         </div>
         <div className="mb-4">
@@ -118,6 +166,7 @@ const TicketDetails = () => {
             value={editedTicket.email || ''}
             onChange={handleInputChange}
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            disabled
           />
         </div>
         <div className="mb-4">
@@ -128,6 +177,7 @@ const TicketDetails = () => {
             value={editedTicket.phoneNumber || ''}
             onChange={handleInputChange}
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            disabled
           />
         </div>
         <div className="mb-4">
@@ -137,6 +187,7 @@ const TicketDetails = () => {
             value={editedTicket.workOrderDescription || ''}
             onChange={handleInputChange}
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            disabled
           />
         </div>
         <div className="mb-4">
@@ -147,6 +198,7 @@ const TicketDetails = () => {
             value={editedTicket.timeAvailability || ''}
             onChange={handleInputChange}
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            disabled
           />
         </div>
         <div className="mb-4">
@@ -199,38 +251,6 @@ const TicketDetails = () => {
           />
         </div>
         <div className="mb-4">
-          <label className="block mb-2 text-gray-700">Status</label>
-          <select
-            name="status"
-            value={editedTicket.status || ''}
-            onChange={handleInputChange}
-            className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-          >
-            {TICKET_STATUSES.filter(status => status !== 'New').map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </div>
-        {isAdmin && (
-          <div className="mb-4">
-            <label className="block mb-2 text-gray-700">Assigned To</label>
-            <select
-              name="assignedTo"
-              value={editedTicket.assignedTo || ''}
-              onChange={handleInputChange}
-              className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-            >
-              {users.map((user) => (
-                <option key={user} value={user}>
-                  {user}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        <div className="mb-4">
           <label className="block mb-2 text-gray-700">Upload Image</label>
           <input
             type="file"
@@ -239,13 +259,22 @@ const TicketDetails = () => {
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
-        <button
-          type="button"
-          onClick={handleSaveClick}
-          className="bg-green-600 hover:bg-green-700 text-white p-3 rounded shadow-lg transition duration-300 w-full"
-        >
-          Save
-        </button>
+        <div className="flex space-x-4">
+          <button
+            type="button"
+            onClick={handleSaveClick}
+            className="bg-green-600 hover:bg-green-700 text-white p-3 rounded shadow-lg transition duration-300 w-full"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="bg-gray-500 hover:bg-gray-600 text-white p-3 rounded shadow-lg transition duration-300 w-full"
+          >
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
   );

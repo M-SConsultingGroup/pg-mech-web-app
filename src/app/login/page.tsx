@@ -23,28 +23,37 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    const response = await fetch('/api/users/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, password }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      login(data.username, data.token);
-      toast.success('Login successful', {
-        className: 'text-xl',
+    try {
+      const response = await fetch('/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
       });
-      router.push('/tickets');
-    } else {
-      toast.error(data.error || 'Login failed', {
-        className: 'text-xl',
-      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        login(data.username, data.token);
+        toast.success('Login successful', {
+          className: 'text-xl',
+        });
+        router.push('/tickets');
+      } else {
+        throw new Error(data.message || 'Invalid Username or Password');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error((error as Error).message, {
+          className: 'text-xl',
+        });
+      } else {
+        toast.error('An unknown error occurred');
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

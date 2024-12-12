@@ -99,10 +99,6 @@ const TicketDetails = () => {
     router.push('/tickets');
   };
 
-  if (!ticket) {
-    toast.loading('Loading ticket...');  
-  }
-
   return (
     <div className="min-h-screen p-8 pb-20 flex flex-col items-center justify-center bg-gray-100">
       <div className="flex items-center mb-6">

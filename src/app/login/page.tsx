@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
+import { getLogger } from '@/lib/logger';
+import { v4 as uuidv4 } from 'uuid';
+
+const logger = getLogger();
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -20,9 +24,24 @@ export default function Login() {
     }
   }, [router]);
 
+  const getCorrelationId = () => {
+    let correlationId = localStorage.getItem('correlationId');
+    if (!correlationId) {
+      correlationId = uuidv4();
+      localStorage.setItem('correlationId', correlationId);
+    }
+    return correlationId;
+  };
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+  
+    const correlationId = getCorrelationId();
+    const loggerWithCorrelationId = logger.child({ correlationId });
+  
+    loggerWithCorrelationId.debug('Starting login process');
+  
     try {
       const response = await fetch('/api/users/login', {
         method: 'POST',
@@ -33,26 +52,29 @@ export default function Login() {
       });
   
       const data = await response.json();
-  
+      setLoading(false);
       if (response.ok) {
+        loggerWithCorrelationId.debug('Login successful');
         login(data.username, data.token);
         toast.success('Login successful', {
           className: 'text-xl',
         });
         router.push('/tickets');
       } else {
+        loggerWithCorrelationId.warn('Login failed', data);
         throw new Error(data.message || 'Invalid Username or Password');
       }
     } catch (error) {
-      if (error instanceof Error) {
-        toast.error((error as Error).message, {
+      loggerWithCorrelationId.error('Login error:', error);
+      if (error instanceof Error && error.message === 'Invalid Username or Password') {
+        toast.error('Invalid Username or Password', {
           className: 'text-xl',
         });
       } else {
-        toast.error('An unknown error occurred');
+        toast.error('An error occurred, please try again', {
+          className: 'text-xl',
+        });
       }
-    } finally {
-      setLoading(false);
     }
   };
 

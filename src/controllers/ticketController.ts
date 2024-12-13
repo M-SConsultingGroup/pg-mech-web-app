@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Ticket from '@/models/ticket';
-import Sequence from '@/models/sequence';
 import moment from 'moment-timezone';
+import Sequence from '@/models/sequence';
+import Ticket from '@/models/ticket';
 import { getLogger } from '@/lib/logger';
-import { v4 as uuidv4 } from 'uuid';
+import { getCorrelationId } from '@/utils/helpers';
+
 
 const generateTicketNumber = async () => {
   const date = moment().tz('America/Chicago'); // Central Time
@@ -23,14 +24,6 @@ const generateTicketNumber = async () => {
   const day = date.format('DD');
 
   return `${year}${month}${day}-${sequenceDoc.sequence.toString().padStart(4, '0')}`;
-};
-
-const getCorrelationId = (req: NextRequest) => {
-  let correlationId = req.headers.get('x-correlation-id');
-  if (!correlationId) {
-    correlationId = uuidv4();
-  }
-  return correlationId;
 };
 
 export const createTicket = async (req: NextRequest) => {

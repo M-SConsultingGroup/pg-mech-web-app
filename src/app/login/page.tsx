@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { getLogger } from '@/lib/logger';
-import { v4 as uuidv4 } from 'uuid';
+import { getCorrelationId } from '@/utils/helpers';
 
 const logger = getLogger();
 
@@ -23,15 +23,6 @@ export default function Login() {
       router.push('/tickets');
     }
   }, [router]);
-
-  const getCorrelationId = () => {
-    let correlationId = localStorage.getItem('correlationId');
-    if (!correlationId) {
-      correlationId = uuidv4();
-      localStorage.setItem('correlationId', correlationId);
-    }
-    return correlationId;
-  };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

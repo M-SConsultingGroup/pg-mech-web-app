@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { getLogger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
+import { Autocomplete } from '@react-google-maps/api';
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -16,6 +17,7 @@ export default function Home() {
     timeAvailability: ''
   });
   const [loading, setLoading] = useState(false);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const getCorrelationId = () => {
     let correlationId = localStorage.getItem('correlationId');
@@ -32,6 +34,16 @@ export default function Home() {
       ...prevData,
       [name]: value
     }));
+  };
+
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      setFormData((prevData) => ({
+        ...prevData,
+        serviceAddress: place.formatted_address || ''
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -114,14 +126,19 @@ export default function Home() {
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Service Address</label>
-          <input
-            type="text"
-            name="serviceAddress"
-            value={formData.serviceAddress}
-            onChange={handleInputChange}
-            className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-            required
-          />
+          <Autocomplete
+            onLoad={(autocomplete) => (autocompleteRef.current = autocomplete)}
+            onPlaceChanged={handlePlaceChanged}
+          >
+            <input
+              type="text"
+              name="serviceAddress"
+              value={formData.serviceAddress}
+              onChange={handleInputChange}
+              className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+              required
+            />
+          </Autocomplete>
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Work Order Description</label>

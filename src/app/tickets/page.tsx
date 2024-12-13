@@ -115,12 +115,12 @@ export default function Tickets() {
     : filteredTickets.filter((ticket) => ticket.assignedTo === username && ticket.status === 'Open');
 
   return (
-    <div className="min-h-screen p-8 pb-20 flex flex-col items-center bg-gray-100 space-y-3">
+    <div className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">
       {isAdmin && (
-        <div className="w-full bg-white p-4 rounded-lg shadow-lg">
+        <div className="w-full bg-white p-2 rounded-lg shadow-lg">
           <h1 className="text-2xl font-bold text-gray-800">Overview</h1>
           <div className="mt-1">
-            <p className="text-sm text-gray-800">Total New Tickets: <span className="font-bold text-gray-800">{tickets.filter(ticket => ticket.status === 'New').length}</span></p>
+            <p className="text-base  text-gray-800">Total New Tickets: <span className="font-bold text-gray-800">{tickets.filter(ticket => ticket.status === 'New').length}</span></p>
           </div>
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {users.map((user) => {
@@ -130,12 +130,12 @@ export default function Tickets() {
               const closedTickets = userTickets.filter((ticket) => ticket.status === 'Closed').length;
 
               return (
-                <div key={user} className="p-2 bg-gray-100 rounded-lg shadow-md">
-                  <h2 className="text-sm font-semibold text-gray-800">{user}</h2>
+                <div key={user} className="p-1 bg-gray-100 rounded-lg shadow-md">
+                  <h2 className="text-base font-semibold text-gray-800">{user}</h2>
                   <div className="mt-1">
-                    <p className="text-xs text-gray-600">Total: <span className="font-bold text-gray-800">{totalTickets}</span></p>
-                    <p className="text-xs text-gray-600">Open: <span className="font-bold text-gray-800">{openTickets}</span></p>
-                    <p className="text-xs text-gray-600">Closed: <span className="font-bold text-gray-800">{closedTickets}</span></p>
+                    <p className="text-sm text-gray-600">Total: <span className="font-bold text-gray-800">{totalTickets}</span></p>
+                    <p className="text-sm text-gray-600">Open: <span className="font-bold text-gray-800">{openTickets}</span></p>
+                    <p className="text-sm text-gray-600">Closed: <span className="font-bold text-gray-800">{closedTickets}</span></p>
                   </div>
                 </div>
               );
@@ -143,8 +143,8 @@ export default function Tickets() {
           </div>
         </div>
       )}
-      <div className="w-full bg-white p-8 rounded-lg shadow-lg">
-        <div className="filter-buttons flex flex-col md:flex-row flex-wrap justify-between items-center mb-4 space-y-2 md:space-y-0">
+      <div className="w-full bg-white p-4 rounded-lg shadow-lg">
+        <div className="filter-buttons flex flex-col md:flex-row flex-wrap justify-between items-center mb-2 space-y-2 md:space-y-0">
           <h1 className="text-3xl font-bold text-gray-800">Tickets</h1>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
             <input
@@ -196,7 +196,7 @@ export default function Tickets() {
               onClick={() => router.push('/')}
               className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
             >
-              + NEW
+              + New
             </button>
           </div>
         </div>
@@ -225,9 +225,25 @@ export default function Tickets() {
                   >
                     <td className="border border-gray-400 p-2 pr-4">{ticket.ticketNumber}</td>
                     <td className="border border-gray-400 p-2 pr-4">{ticket.name}</td>
-                    <td className="border border-gray-400 p-2 pr-4">{ticket.serviceAddress}</td>
+                    <td className="border border-gray-400 p-2 pr-4">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.serviceAddress || '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline"
+                      >
+                        {ticket.serviceAddress || ''}
+                      </a>
+                    </td>
                     {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.email}</td>}
-                    <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.phoneNumber}</td>
+                    <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
+                      <a
+                        href={`tel:${ticket.phoneNumber}`}
+                        className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100"
+                      >
+                        {ticket.phoneNumber || ''}
+                      </a>
+                    </td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.workOrderDescription}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.timeAvailability}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.status}</td>

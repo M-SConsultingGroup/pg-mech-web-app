@@ -116,7 +116,7 @@ export default function Login() {
             Login
           </button>
           {loading && (
-            <div className="absolute inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-10">
+            <div className="loader-container">
               <div className="loader"></div>
             </div>
           )}

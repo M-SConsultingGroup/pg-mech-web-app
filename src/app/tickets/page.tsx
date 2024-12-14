@@ -77,10 +77,19 @@ export default function Tickets() {
   };
 
   const handleRowDelete = async (ticketId: string) => {
+    const confirmed = window.confirm('Are you sure you want to delete this ticket?');
+    if (!confirmed) {
+      return;
+    }
+  
+    const token = localStorage.getItem('token');
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-
+  
     if (response.ok) {
       setTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
     } else {

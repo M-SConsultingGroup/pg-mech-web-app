@@ -3,8 +3,10 @@
 import { useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { getLogger } from '@/lib/logger';
-import { v4 as uuidv4 } from 'uuid';
 import { Autocomplete } from '@react-google-maps/api';
+import ReCAPTCHA from 'react-google-recaptcha';
+import MaskedInput from 'react-text-mask';
+import { getCorrelationId } from '@/utils/helpers';
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -17,16 +19,10 @@ export default function Home() {
     timeAvailability: ''
   });
   const [loading, setLoading] = useState(false);
+  const [disclaimer, setDisclaimer] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-
-  const getCorrelationId = () => {
-    let correlationId = localStorage.getItem('correlationId');
-    if (!correlationId) {
-      correlationId = uuidv4();
-      localStorage.setItem('correlationId', correlationId);
-    }
-    return correlationId;
-  };
+  const recaptchaRef = useRef<ReCAPTCHA | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
@@ -46,8 +42,24 @@ export default function Home() {
     }
   };
 
+  const handleRecaptchaChange = (token: string | null) => {
+    setRecaptchaToken(token);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+    if (!disclaimer) {
+      toast.error('You must agree to the disclaimer before submitting the form.');
+      return;
+    }
+    if (!recaptchaToken) {
+      toast.error('Please complete the reCAPTCHA.');
+      return;
+    }
+    if (formData.phoneNumber.replace(/\D/g, '').length !== 10) {
+      toast.error('Phone number must be exactly ten digits.');
+      return;
+    }
     setLoading(true);
 
     const correlationId = getCorrelationId();
@@ -59,13 +71,32 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, recaptchaToken })
       });
       setLoading(false);
       if (response.ok) {
         toast.success('Ticket submitted successfully', {
           className: 'text-xl'
         });
+
+        // Send text message
+        const smsResponse = await fetch('/api/send-sms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            phone: formData.phoneNumber,
+            message: `Hi ${formData.name}, Thank you for submitting a ticket. Our Technician will contact you soon.`,
+          }),
+        });
+
+        const smsData = await smsResponse.json();
+        if (smsData.success) {
+          logger.info('SMS sent successfully.');
+        } else {
+          logger.error(`SMS sending failed: ${smsData.error}`);
+        }
         setFormData({
           name: '',
           email: '',
@@ -75,6 +106,9 @@ export default function Home() {
           tenantName: '',
           timeAvailability: ''
         });
+        setDisclaimer(false);
+        setRecaptchaToken(null);
+        recaptchaRef.current?.reset();
       } else {
         const errorData = await response.json();
         throw new Error(`Failed to submit ticket: ${response.status} - ${errorData.error || response.statusText}`);
@@ -90,7 +124,7 @@ export default function Home() {
   return (
     <div className="min-h-screen p-8 pb-20 flex flex-col items-center justify-center bg-gray-100">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Submit a Ticket</h1>
-      <form onSubmit={handleSubmit} className="w-full max-w-lg bg-white p-8 rounded-lg shadow-lg">
+      <form onSubmit={handleSubmit} className="w-full max-w-lg bg-white p-8 rounded-lg shadow-lg relative">
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Name</label>
           <input
@@ -98,6 +132,7 @@ export default function Home() {
             name="name"
             value={formData.name}
             onChange={handleInputChange}
+            placeholder="Will be used for billing"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
           />
@@ -109,20 +144,25 @@ export default function Home() {
             name="email"
             value={formData.email}
             onChange={handleInputChange}
+            placeholder="Your Primary Email Address"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
           />
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Phone Number</label>
-          <input
-            type="text"
-            name="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={handleInputChange}
-            className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-            required
-          />
+          <div className="flex items-center">
+            <span className="mr-2 border p-2 rounded">+1</span>
+            <MaskedInput
+              mask={['(', /[1-9]/, /\d/, /\d/, ')', ' ', /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/, /\d/]}
+              value={formData.phoneNumber}
+              onChange={handleInputChange}
+              placeholder="Message and data rates may apply"
+              className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+              required
+              name="phoneNumber"
+            />
+          </div>
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Service Address</label>
@@ -146,6 +186,7 @@ export default function Home() {
             name="workOrderDescription"
             value={formData.workOrderDescription}
             onChange={handleInputChange}
+            placeholder="Describe your problem"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
           />
@@ -166,8 +207,28 @@ export default function Home() {
             name="timeAvailability"
             value={formData.timeAvailability}
             onChange={handleInputChange}
+            placeholder="When would you like for our technician to visit?"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block mb-2 text-gray-700">
+            <input
+              type="checkbox"
+              checked={disclaimer}
+              onChange={() => setDisclaimer(!disclaimer)}
+              className="mr-2"
+              required
+            />
+            I understand that there will be a minimum service fee of $80.
+          </label>
+        </div>
+        <div className="mb-4">
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
+            onChange={handleRecaptchaChange}
           />
         </div>
         <button
@@ -177,7 +238,7 @@ export default function Home() {
           Submit
         </button>
         {loading && (
-          <div className="absolute inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-10">
+          <div className="loader-container">
             <div className="loader"></div>
           </div>
         )}

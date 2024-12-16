@@ -53,15 +53,15 @@ export default function Login() {
         router.push('/tickets');
       } else {
         loggerWithCorrelationId.warn('Login failed', data);
-        throw new Error(data.message || 'Invalid Username or Password');
+        throw new Error(data.error);
       }
     } catch (error) {
-      loggerWithCorrelationId.error('Login error:', error);
-      if (error instanceof Error && error.message === 'Invalid Username or Password') {
+      if (error instanceof Error && error.message === 'Invalid credentials') {
         toast.error('Invalid Username or Password', {
           className: 'text-xl',
         });
       } else {
+        loggerWithCorrelationId.error('Login error:', error);
         toast.error('An error occurred, please try again', {
           className: 'text-xl',
         });

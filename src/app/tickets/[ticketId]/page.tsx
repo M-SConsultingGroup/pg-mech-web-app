@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ITicket } from '@/common/interfaces';
-import { useAuth } from '@/context/AuthContext';
 import { getLogger } from '@/lib/logger';
 import { getCorrelationId } from '@/utils/helpers';
 
@@ -12,7 +11,6 @@ const TicketDetails = () => {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId;
-  const { isAdmin } = useAuth();
   const [users, setUsers] = useState<string[]>([]);
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [editedTicket, setEditedTicket] = useState<Partial<ITicket>>({});

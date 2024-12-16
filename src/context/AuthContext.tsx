@@ -1,12 +1,17 @@
 'use client';
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import * as jwtDecode from 'jwt-decode';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
+import { jwtDecode, JwtPayload } from 'jwt-decode';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   isLoggedIn: boolean;
   login: (username: string, token: string) => void;
   logout: () => void;
+  username: string;
+  isAdmin: boolean;
+}
+
+interface DecodedToken extends JwtPayload {
   username: string;
   isAdmin: boolean;
 }
@@ -19,11 +24,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
+  const logout = useCallback(() => {
+    setIsLoggedIn(false);
+    setUsername('');
+    setIsAdmin(false);
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    router.push('/login');
+  }, [router]);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      const decodedToken: any = jwtDecode.jwtDecode(token);
-      if (decodedToken.exp * 1000 < Date.now()) {
+      const decodedToken = jwtDecode<DecodedToken>(token);
+      if (decodedToken.exp && decodedToken.exp * 1000 < Date.now()) {
         logout();
       } else {
         setIsLoggedIn(true);
@@ -31,24 +45,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAdmin(decodedToken.isAdmin); 
       }
     }
-  }, []);
+  }, [logout]);
 
   const login = (username: string, token: string) => {
-    const decodedToken: any = jwtDecode.jwtDecode(token);
+    const decodedToken = jwtDecode<DecodedToken>(token);
     setIsLoggedIn(true);
     setUsername(username);
     setIsAdmin(decodedToken.isAdmin);
     localStorage.setItem('token', token);
     localStorage.setItem('username', username);
-  };
-
-  const logout = () => {
-    setIsLoggedIn(false);
-    setUsername('');
-    setIsAdmin(false);
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    router.push('/login');
   };
 
   return (

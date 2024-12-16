@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ITicket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
 
 export default function Tickets() {
   const { username, isAdmin } = useAuth();
@@ -41,9 +42,12 @@ export default function Tickets() {
       const data = await response.json();
       setUsers(data.map((user: { username: string }) => user.username));
     };
-
-    fetchTickets();
-    fetchUsers();
+  
+    const fetchData = async () => {
+      await Promise.all([fetchTickets(), fetchUsers()]);
+    };
+  
+    fetchData();
   }, []);
 
   const handleRowToggle = (ticketId: string) => {
@@ -169,11 +173,11 @@ export default function Tickets() {
               className="border p-1 rounded"
             >
               <option value="">Filter by Status</option>
-              {TICKET_STATUSES.map((status) => (
+                {TICKET_STATUSES.map((status: string) => (
                 <option key={status} value={status}>
                   {status}
                 </option>
-              ))}
+                ))}
             </select>
             {isAdmin && (
               <select
@@ -259,18 +263,18 @@ export default function Tickets() {
                     {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.assignedTo || 'Unassigned'}</td>}
                     <td className="border border-gray-400 p-2 pr-4">
                       <div className="flex items-center space-x-1">
-                        <button
+                      <button
                           onClick={() => router.push(`/tickets/${ticket._id}`)}
                           className="bg-yellow-500 p-1 rounded flex items-center"
                         >
-                          <img src="/edit-pen.svg" alt="Edit" className="h-5 w-5" />
+                          <Image src="/edit-pen.svg" alt="Edit" width={20} height={20} />
                         </button>
                         {isAdmin && (
                           <button
                             onClick={() => handleRowDelete(ticket._id || '')}
                             className="border border-gray-500 p-1 rounded flex items-center"
                           >
-                            <img src="/trash-bin-red.svg" alt="Delete" className="h-5 w-5" />
+                            <Image src="/trash-bin-red.svg" alt="Delete" width={20} height={20} />
                           </button>
                         )}
                       </div>

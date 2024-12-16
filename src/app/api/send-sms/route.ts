@@ -1,7 +1,12 @@
 // src/app/api/send-sms/route.ts
+import { getLogger } from '@/lib/logger';
+import { getCorrelationId } from '@/utils/helpers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
+
+  const correlationId = getCorrelationId();
+  const logger = getLogger().child({ correlationId });
   const { phone, message } = await req.json();
 
   try {
@@ -25,6 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: data }, { status: 400 });
     }
   } catch (error) {
+    logger.error(error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

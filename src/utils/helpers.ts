@@ -12,7 +12,7 @@ export const getCorrelationId = (req?: NextRequest): string => {
     return correlationId;
   } else {
     // Server-side
-    let correlationId = req?.headers?.get('x-correlation-id') || uuidv4();
+    const correlationId = req?.headers?.get('x-correlation-id') || uuidv4();
     return correlationId;
   }
 };

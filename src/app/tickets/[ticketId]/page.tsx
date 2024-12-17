@@ -7,6 +7,8 @@ import { getLogger } from '@/lib/logger';
 import { getCorrelationId } from '@/utils/helpers';
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
+import { set } from 'mongoose';
 
 let logger = getLogger();
 const correlationId = getCorrelationId();
@@ -16,18 +18,20 @@ const TicketDetails = () => {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId;
-  const [users, setUsers] = useState<string[]>([]);
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [editedTicket, setEditedTicket] = useState<Partial<ITicket>>({});
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (ticketId) {
       const fetchData = async () => {
+        setLoading(true);
         const authToken = localStorage.getItem('token');
         if (!authToken) {
+          setLoading(false);
           return;
         }
 
@@ -48,6 +52,8 @@ const TicketDetails = () => {
           }
         } catch (error) {
           console.error('Error fetching data:', error);
+        } finally {
+          setLoading(false);
         }
       };
 
@@ -61,8 +67,8 @@ const TicketDetails = () => {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedImages(Array.from(e.target.files));
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedImages((prevImages) => [...prevImages, ...Array.from(e.target.files || [])]);
     }
   };
 
@@ -70,8 +76,10 @@ const TicketDetails = () => {
     setSelectedImages((prevImages) => prevImages.filter((_, i) => i !== index));
   };
 
-  const handleImageClick = (image: string) => {
-    setSelectedImage(image);
+  const handleImageClick = async (image: string) => {
+    const decompressedImage = await fetch(image).then(res => res.blob());
+    const imageUrl = URL.createObjectURL(decompressedImage);
+    setSelectedImage(imageUrl);
     setIsModalOpen(true);
   };
 
@@ -80,37 +88,44 @@ const TicketDetails = () => {
     if (!authToken) {
       return;
     }
-
+  
+    setLoading(true);
+  
     try {
       const compressedImages = await Promise.all(
         selectedImages.map(async (image) => {
-          const options = {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1920,
-            useWebWorker: true,
-          };
-          const compressedImage = await imageCompression(image, options);
-          return compressedImage;
+          if (image instanceof File) {
+            const options = {
+              maxSizeMB: 1,
+              maxWidthOrHeight: 1920,
+              useWebWorker: true,
+            };
+            const compressedImage = await imageCompression(image, options);
+            return compressedImage;
+          }
+          return image;
         })
       );
-
+  
       const base64Images = await Promise.all(
-        compressedImages.map((image) => {
-          return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(image);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (error) => reject(error);
-          });
-        })
+        compressedImages
+          .filter((image) => image instanceof Blob)
+          .map((image) => {
+            return new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(image);
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = (error) => reject(error);
+            });
+          })
       );
-
+  
       const updatedTicket = {
         ...editedTicket,
         partsUsed: editedTicket.partsUsed?.map(part => part.trim()),
-        images: base64Images,
+        images: [...(editedTicket.images || []), ...base64Images],
       };
-
+  
       const response = await fetch(`/api/tickets?id=${ticketId}`, {
         method: 'PUT',
         headers: {
@@ -119,9 +134,10 @@ const TicketDetails = () => {
         },
         body: JSON.stringify(updatedTicket),
       });
-
+  
       if (response.ok) {
-        router.push('/tickets');
+        setLoading(false);
+        toast.success('Ticket updated successfully');
       } else {
         toast.error('Failed to update ticket ... Try again later');
         logger.error('Error saving ticket:', response);
@@ -134,8 +150,15 @@ const TicketDetails = () => {
 
   const ImageModal = ({ image, onClose }: { image: string, onClose: () => void }) => (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="relative">
-        <img src={image} alt="Expanded" className="max-w-full max-h-full" />
+      <div className="relative max-w-full max-h-full">
+        <Image
+          src={image}
+          alt="Expanded"
+          layout="responsive"
+          width={800}
+          height={600}
+          className="object-contain"
+        />
         <button
           onClick={onClose}
           className="absolute top-0 right-0 bg-red-600 text-white p-2 rounded-full"
@@ -147,7 +170,7 @@ const TicketDetails = () => {
   );
 
   return (
-    <div className="min-h-screen p-4 pb-10 flex flex-col items-center justify-center bg-gray-100">
+    <div className="min-h-screen p-4 pb-10 flex flex-col items-center justify-center bg-gray-100 relative">
       <div className="flex items-center mb-4">
         <button onClick={() => router.push('/tickets')} className="mr-2">
           <svg
@@ -300,13 +323,15 @@ const TicketDetails = () => {
             onChange={handleImageChange}
             className="mb-2"
           />
-          <div className="flex flex-wrap">
+          <div className="flex flex-wrap justify-center">
             {selectedImages.map((image, index) => (
               <div key={index} className="relative m-2">
-                <img
+                <Image
                   src={typeof image === 'string' ? image : URL.createObjectURL(image)}
                   alt={`Uploaded ${index}`}
-                  className="w-32 h-32 object-cover cursor-pointer"
+                  width={128}
+                  height={128}
+                  className="object-cover cursor-pointer"
                   onClick={() => handleImageClick(typeof image === 'string' ? image : URL.createObjectURL(image))}
                 />
                 <button
@@ -330,6 +355,11 @@ const TicketDetails = () => {
           </button>
         </div>
       </form>
+      {loading && (
+        <div className="loader-container">
+          <div className="loader"></div>
+        </div>
+      )}
       {isModalOpen && selectedImage && (
         <ImageModal image={selectedImage} onClose={() => setIsModalOpen(false)} />
       )}

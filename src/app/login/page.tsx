@@ -31,8 +31,6 @@ export default function Login() {
     const correlationId = getCorrelationId();
     const loggerWithCorrelationId = logger.child({ correlationId });
   
-    loggerWithCorrelationId.debug('Starting login process');
-  
     try {
       const response = await fetch('/api/users/login', {
         method: 'POST',
@@ -45,7 +43,7 @@ export default function Login() {
       const data = await response.json();
       setLoading(false);
       if (response.ok) {
-        loggerWithCorrelationId.debug('Login successful');
+        loggerWithCorrelationId.debug('Login successful : ', data.username);
         login(data.username, data.token);
         toast.success('Login successful', {
           className: 'text-xl',

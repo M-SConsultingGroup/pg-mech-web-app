@@ -16,5 +16,5 @@ export interface ITicket {
   additionalNotes?: string;
   amountBilled?: number;
   amountPaid?: string;
-  image?: string;
+  images?: [{ type: String, default: [] }],
 }

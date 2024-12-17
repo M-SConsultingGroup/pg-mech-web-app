@@ -21,6 +21,7 @@ const ticketSchema = new Schema<ITicketDocument>({
   additionalNotes: {type : String, default: ''},
   amountBilled : {type : Number, default: 0},
   amountPaid: {type : Number, default: 0},
+  images: [{ type: String, default: [] }],
 });
 
 const Ticket = model<ITicketDocument>('Ticket', ticketSchema);

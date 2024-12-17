@@ -18,6 +18,7 @@ export default function Tickets() {
   const [filter, setFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>(isAdmin ? 'New' : 'Open');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
+  const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -98,6 +99,40 @@ export default function Tickets() {
       setTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
     } else {
       toast.error('Failed to delete ticket');
+    }
+  };
+
+  const handleAssignedUserChange = async (ticketId: string, user: string) => {
+    const previousUser = assignedUsers[ticketId] || '';
+    setAssignedUsers((prev) => ({
+      ...prev,
+      [ticketId]: user,
+    }));
+  
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/tickets?id=${ticketId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ ticketId, assignedTo: user, status: 'Open' })
+    });
+  
+    if (response.ok) {
+      const updatedTicket = await response.json();
+      setTickets((prev) =>
+        prev.map((ticket) =>
+          ticket._id === ticketId ? { ...ticket, assignedTo: user, status: 'Open' } : ticket
+        )
+      );
+      toast.success('Ticket updated successfully');
+    } else {
+      setAssignedUsers((prev) => ({
+        ...prev,
+        [ticketId]: previousUser,
+      }));
+      toast.error('Failed to update ticket');
     }
   };
 
@@ -260,10 +295,25 @@ export default function Tickets() {
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.workOrderDescription}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.timeAvailability}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.status}</td>
-                    {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.assignedTo || 'Unassigned'}</td>}
+                    {isAdmin && (
+                      <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
+                        <select
+                          value={assignedUsers[ticket._id!] || ticket.assignedTo || ''}
+                          onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value)}
+                          className="border p-1 rounded"
+                        >
+                          <option value="">Unassigned</option>
+                          {users.map((user) => (
+                            <option key={user} value={user}>
+                              {user}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    )}
                     <td className="border border-gray-400 p-2 pr-4">
                       <div className="flex items-center space-x-1">
-                      <button
+                        <button
                           onClick={() => router.push(`/tickets/${ticket._id}`)}
                           className="bg-yellow-500 p-1 rounded flex items-center"
                         >
@@ -288,7 +338,23 @@ export default function Tickets() {
                         <div><strong>Work Order Description:</strong> {ticket.workOrderDescription}</div>
                         <div><strong>Time Availability:</strong> {ticket.timeAvailability}</div>
                         <div><strong>Status:</strong> {ticket.status}</div>
-                        {isAdmin && <div><strong>Assigned To:</strong> {ticket.assignedTo || 'Unassigned'}</div>}
+                        {isAdmin && (
+                          <div>
+                            <strong>Assigned To:</strong>
+                            <select
+                              value={assignedUsers[ticket._id!] || ticket.assignedTo || ''}
+                              onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value)}
+                              className="border p-1 rounded"
+                            >
+                              <option value="">Unassigned</option>
+                              {users.map((user) => (
+                                <option key={user} value={user}>
+                                  {user}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <div><strong>Created At:</strong> {new Date(ticket.createdAt).toLocaleString()}</div>
                         <div><strong>Updated At:</strong> {new Date(ticket.updatedAt).toLocaleString()}</div>
                       </td>

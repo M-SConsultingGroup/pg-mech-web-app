@@ -7,6 +7,7 @@ import { Autocomplete } from '@react-google-maps/api';
 import ReCAPTCHA from 'react-google-recaptcha';
 import MaskedInput from 'react-text-mask';
 import { getCorrelationId } from '@/utils/helpers';
+import { useRouter } from 'next/router';
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -23,6 +24,7 @@ export default function Home() {
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA | null>(null);
+  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
@@ -75,11 +77,15 @@ export default function Home() {
       });
       setLoading(false);
       if (response.ok) {
+        const responseData = await response.json();
+        const ticketId = responseData.ticketId;
+
         toast.success('Ticket submitted successfully', {
           className: 'text-xl'
         });
 
-        // Send text message
+        // Send text message with reschedule link
+        const rescheduleLink = `${window.location.origin}/reschedule?ticketId=${ticketId}`;
         const smsResponse = await fetch('/api/send-sms', {
           method: 'POST',
           headers: {
@@ -87,7 +93,7 @@ export default function Home() {
           },
           body: JSON.stringify({
             phone: formData.phoneNumber,
-            message: `Hi ${formData.name}, Thank you for submitting a ticket. Our Technician will contact you soon.`,
+            message: `Hi ${formData.name}, Thank you for submitting a ticket. Our Technician will contact you soon. If you need to reschedule, please use the following link: ${rescheduleLink}`,
           }),
         });
 

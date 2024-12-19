@@ -7,7 +7,6 @@ import { Autocomplete } from '@react-google-maps/api';
 import ReCAPTCHA from 'react-google-recaptcha';
 import MaskedInput from 'react-text-mask';
 import { getCorrelationId } from '@/utils/helpers';
-import { useRouter } from 'next/router';
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -24,7 +23,6 @@ export default function Home() {
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA | null>(null);
-  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;

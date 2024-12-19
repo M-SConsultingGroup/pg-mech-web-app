@@ -8,7 +8,7 @@ import { getCorrelationId } from '@/utils/helpers';
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
-import { set } from 'mongoose';
+import { TICKET_STATUSES } from '@/common/constants';
 
 let logger = getLogger();
 const correlationId = getCorrelationId();
@@ -25,6 +25,7 @@ const TicketDetails = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const filteredStatuses = TICKET_STATUSES.filter(status => status !== 'New');
   useEffect(() => {
     if (ticketId) {
       const fetchData = async () => {
@@ -88,9 +89,9 @@ const TicketDetails = () => {
     if (!authToken) {
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
       const compressedImages = await Promise.all(
         selectedImages.map(async (image) => {
@@ -106,7 +107,7 @@ const TicketDetails = () => {
           return image;
         })
       );
-  
+
       const base64Images = await Promise.all(
         compressedImages
           .filter((image) => image instanceof Blob)
@@ -119,13 +120,13 @@ const TicketDetails = () => {
             });
           })
       );
-  
+
       const updatedTicket = {
         ...editedTicket,
         partsUsed: editedTicket.partsUsed?.map(part => part.trim()),
         images: [...(editedTicket.images || []), ...base64Images],
       };
-  
+
       const response = await fetch(`/api/tickets?id=${ticketId}`, {
         method: 'PUT',
         headers: {
@@ -134,7 +135,7 @@ const TicketDetails = () => {
         },
         body: JSON.stringify(updatedTicket),
       });
-  
+
       if (response.ok) {
         setLoading(false);
         toast.success('Ticket updated successfully');
@@ -293,6 +294,21 @@ const TicketDetails = () => {
             onChange={handleInputChange}
             className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
+        </div>
+        <div className="mb-2">
+          <label className="block mb-1 text-gray-700">Status</label>
+          <select
+            name="status"
+            value={editedTicket.status || ''}
+            onChange={handleInputChange}
+            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
+          >
+            {filteredStatuses.map(status => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="mb-2">
           <label className="block mb-1 text-gray-700">Amount Billed</label>

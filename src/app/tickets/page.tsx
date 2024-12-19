@@ -160,7 +160,7 @@ export default function Tickets() {
 
   const displayedTickets = isAdmin
     ? filteredTickets
-    : filteredTickets.filter((ticket) => ticket.assignedTo === username && ticket.status === 'Open');
+    : filteredTickets.filter((ticket) => ticket.assignedTo === username);
 
   return (
     <div className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">

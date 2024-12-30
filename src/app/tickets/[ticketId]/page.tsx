@@ -1,76 +1,87 @@
 'use client';
 
-import toast from 'react-hot-toast';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ITicket } from '@/common/interfaces';
-import { useAuth } from '@/context/AuthContext';
 import { getLogger } from '@/lib/logger';
 import { getCorrelationId } from '@/utils/helpers';
+import imageCompression from 'browser-image-compression';
+import toast from 'react-hot-toast';
+import Image from 'next/image';
+import { TICKET_STATUSES } from '@/common/constants';
+
+let logger = getLogger();
+const correlationId = getCorrelationId();
+logger = logger.child({ correlationId });
 
 const TicketDetails = () => {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId;
-  const { isAdmin } = useAuth();
-  const [users, setUsers] = useState<string[]>([]);
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [editedTicket, setEditedTicket] = useState<Partial<ITicket>>({});
-  const [image, setImage] = useState<File | null>(null);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
+  const filteredStatuses = TICKET_STATUSES.filter(status => status !== 'New');
   useEffect(() => {
     if (ticketId) {
-      const correlationId = getCorrelationId();
-      const logger = getLogger().child({ correlationId });
       const fetchData = async () => {
+        setLoading(true);
         const authToken = localStorage.getItem('token');
         if (!authToken) {
+          setLoading(false);
           return;
         }
-  
+
         try {
-          const [ticketResponse, usersResponse] = await Promise.all([
-            fetch(`/api/tickets?id=${ticketId}`, {
-              headers: {
-                'Authorization': `Bearer ${authToken}`,
-              },
-            }),
-            fetch('/api/users/getAllUsers', {
-              headers: {
-                'Authorization': `Bearer ${authToken}`,
-              },
-            })
-          ]);
-  
-          if (ticketResponse.ok && usersResponse.ok) {
+          const ticketResponse = await fetch(`/api/tickets?id=${ticketId}`, {
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+            },
+          });
+
+          if (ticketResponse.ok) {
             const ticketData = await ticketResponse.json();
-            const usersData = await usersResponse.json();
-  
             setTicket(ticketData);
             setEditedTicket(ticketData);
-            setUsers(usersData.map((user: { username: string }) => user.username));
+            setSelectedImages(ticketData.images || []);
           } else {
-            if (!ticketResponse.ok) {
-              toast.error('Failed to fetch ticket details');
-            }
+            toast.error('Failed to fetch ticket details');
           }
         } catch (error) {
-          logger.error('Error fetching data:', error);
+          console.error('Error fetching data:', error);
+        } finally {
+          setLoading(false);
         }
       };
-  
+
       fetchData();
     }
   }, [ticketId]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setEditedTicket((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImage(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedImages((prevImages) => [...prevImages, ...Array.from(e.target.files || [])]);
     }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages((prevImages) => prevImages.filter((_, i) => i !== index));
+  };
+
+  const handleImageClick = async (image: string) => {
+    const decompressedImage = await fetch(image).then(res => res.blob());
+    const imageUrl = URL.createObjectURL(decompressedImage);
+    setSelectedImage(imageUrl);
+    setIsModalOpen(true);
   };
 
   const handleSaveClick = async () => {
@@ -79,33 +90,88 @@ const TicketDetails = () => {
       return;
     }
 
-    const updatedTicket = {
-      ...editedTicket,
-      partsUsed: editedTicket.partsUsed?.map(part => part.trim()),
-    };
+    setLoading(true);
 
-    const response = await fetch(`/api/tickets?id=${ticketId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-      },
-      body: JSON.stringify(updatedTicket),
-    });
+    try {
+      const compressedImages = await Promise.all(
+        selectedImages.map(async (image) => {
+          if (image instanceof File) {
+            const options = {
+              maxSizeMB: 1,
+              maxWidthOrHeight: 1920,
+              useWebWorker: true,
+            };
+            const compressedImage = await imageCompression(image, options);
+            return compressedImage;
+          }
+          return image;
+        })
+      );
 
-    if (response.ok) {
-      router.push('/tickets');
-    } else {
+      const base64Images = await Promise.all(
+        compressedImages
+          .filter((image) => image instanceof Blob)
+          .map((image) => {
+            return new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(image);
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = (error) => reject(error);
+            });
+          })
+      );
+
+      const updatedTicket = {
+        ...editedTicket,
+        partsUsed: editedTicket.partsUsed?.map(part => part.trim()),
+        images: [...(editedTicket.images || []), ...base64Images],
+      };
+
+      const response = await fetch(`/api/tickets?id=${ticketId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(updatedTicket),
+      });
+
+      if (response.ok) {
+        setLoading(false);
+        toast.success('Ticket updated successfully');
+      } else {
+        toast.error('Failed to update ticket ... Try again later');
+        logger.error('Error saving ticket:', response);
+      }
+    } catch (error) {
       toast.error('Failed to update ticket ... Try again later');
+      logger.error('Error saving ticket:', error);
     }
   };
 
-  const handleCancel = () => {
-    router.push('/tickets');
-  };
+  const ImageModal = ({ image, onClose }: { image: string, onClose: () => void }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+      <div className="relative max-w-full max-h-full">
+        <Image
+          src={image}
+          alt="Expanded"
+          layout="responsive"
+          width={800}
+          height={600}
+          className="object-contain"
+        />
+        <button
+          onClick={onClose}
+          className="absolute top-0 right-0 bg-red-600 text-white p-2 rounded-full"
+        >
+          &times;
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen p-4 pb-10 flex flex-col items-center justify-center bg-gray-100">
+    <div className="min-h-screen p-4 pb-10 flex flex-col items-center justify-center bg-gray-100 relative">
       <div className="flex items-center mb-4">
         <button onClick={() => router.push('/tickets')} className="mr-2">
           <svg
@@ -230,6 +296,21 @@ const TicketDetails = () => {
           />
         </div>
         <div className="mb-2">
+          <label className="block mb-1 text-gray-700">Status</label>
+          <select
+            name="status"
+            value={editedTicket.status || ''}
+            onChange={handleInputChange}
+            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
+          >
+            {filteredStatuses.map(status => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-2">
           <label className="block mb-1 text-gray-700">Amount Billed</label>
           <input
             type="number"
@@ -250,13 +331,35 @@ const TicketDetails = () => {
           />
         </div>
         <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Upload Image</label>
+          <label className="block mb-1 text-gray-700">Upload Images</label>
           <input
             type="file"
-            name="image"
+            multiple
+            accept="image/*"
             onChange={handleImageChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="mb-2"
           />
+          <div className="flex flex-wrap justify-center">
+            {selectedImages.map((image, index) => (
+              <div key={index} className="relative m-2">
+                <Image
+                  src={typeof image === 'string' ? image : URL.createObjectURL(image)}
+                  alt={`Uploaded ${index}`}
+                  width={128}
+                  height={128}
+                  className="object-cover cursor-pointer"
+                  onClick={() => handleImageClick(typeof image === 'string' ? image : URL.createObjectURL(image))}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(index)}
+                  className="absolute top-0 right-0 bg-red-600 text-white p-1 rounded-full"
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="flex space-x-2">
           <button
@@ -266,15 +369,16 @@ const TicketDetails = () => {
           >
             Save
           </button>
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded shadow-lg transition duration-300 w-full"
-          >
-            Cancel
-          </button>
         </div>
       </form>
+      {loading && (
+        <div className="loader-container">
+          <div className="loader"></div>
+        </div>
+      )}
+      {isModalOpen && selectedImage && (
+        <ImageModal image={selectedImage} onClose={() => setIsModalOpen(false)} />
+      )}
     </div>
   );
 };

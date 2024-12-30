@@ -11,10 +11,10 @@ export interface ITicket {
   assignedTo?: string;
   createdAt: Date;
   updatedAt: Date;
-  partsUsed?: stirng[];
+  partsUsed?: string[];
   servicesDelivered?: string;
   additionalNotes?: string;
   amountBilled?: number;
   amountPaid?: string;
-  image?: string;
+  images?: { type: string, default: [] }[];
 }

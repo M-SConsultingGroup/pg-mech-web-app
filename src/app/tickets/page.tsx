@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ITicket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
 
 export default function Tickets() {
   const { username, isAdmin } = useAuth();
@@ -17,6 +18,7 @@ export default function Tickets() {
   const [filter, setFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>(isAdmin ? 'New' : 'Open');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
+  const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -41,9 +43,12 @@ export default function Tickets() {
       const data = await response.json();
       setUsers(data.map((user: { username: string }) => user.username));
     };
-
-    fetchTickets();
-    fetchUsers();
+  
+    const fetchData = async () => {
+      await Promise.all([fetchTickets(), fetchUsers()]);
+    };
+  
+    fetchData();
   }, []);
 
   const handleRowToggle = (ticketId: string) => {
@@ -97,6 +102,40 @@ export default function Tickets() {
     }
   };
 
+  const handleAssignedUserChange = async (ticketId: string, user: string) => {
+    const previousUser = assignedUsers[ticketId] || '';
+    setAssignedUsers((prev) => ({
+      ...prev,
+      [ticketId]: user,
+    }));
+  
+    const token = localStorage.getItem('token');
+    const response = await fetch(`/api/tickets?id=${ticketId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ ticketId, assignedTo: user, status: 'Open' })
+    });
+  
+    if (response.ok) {
+      const updatedTicket = await response.json();
+      setTickets((prev) =>
+        prev.map((ticket) =>
+          ticket._id === ticketId ? { ...ticket, assignedTo: user, status: 'Open' } : ticket
+        )
+      );
+      toast.success('Ticket updated successfully');
+    } else {
+      setAssignedUsers((prev) => ({
+        ...prev,
+        [ticketId]: previousUser,
+      }));
+      toast.error('Failed to update ticket');
+    }
+  };
+
   const filteredTickets = tickets
     .filter((ticket) =>
       ticket.name.toLowerCase().includes(filter.toLowerCase()) ||
@@ -121,7 +160,7 @@ export default function Tickets() {
 
   const displayedTickets = isAdmin
     ? filteredTickets
-    : filteredTickets.filter((ticket) => ticket.assignedTo === username && ticket.status === 'Open');
+    : filteredTickets.filter((ticket) => ticket.assignedTo === username);
 
   return (
     <div className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">
@@ -169,11 +208,11 @@ export default function Tickets() {
               className="border p-1 rounded"
             >
               <option value="">Filter by Status</option>
-              {TICKET_STATUSES.map((status) => (
+                {TICKET_STATUSES.map((status: string) => (
                 <option key={status} value={status}>
                   {status}
                 </option>
-              ))}
+                ))}
             </select>
             {isAdmin && (
               <select
@@ -256,21 +295,36 @@ export default function Tickets() {
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.workOrderDescription}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.timeAvailability}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.status}</td>
-                    {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.assignedTo || 'Unassigned'}</td>}
+                    {isAdmin && (
+                      <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
+                        <select
+                          value={assignedUsers[ticket._id!] || ticket.assignedTo || ''}
+                          onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value)}
+                          className="border p-1 rounded"
+                        >
+                          <option value="">Unassigned</option>
+                          {users.map((user) => (
+                            <option key={user} value={user}>
+                              {user}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    )}
                     <td className="border border-gray-400 p-2 pr-4">
                       <div className="flex items-center space-x-1">
                         <button
                           onClick={() => router.push(`/tickets/${ticket._id}`)}
                           className="bg-yellow-500 p-1 rounded flex items-center"
                         >
-                          <img src="/edit-pen.svg" alt="Edit" className="h-5 w-5" />
+                          <Image src="/edit-pen.svg" alt="Edit" width={20} height={20} />
                         </button>
                         {isAdmin && (
                           <button
                             onClick={() => handleRowDelete(ticket._id || '')}
                             className="border border-gray-500 p-1 rounded flex items-center"
                           >
-                            <img src="/trash-bin-red.svg" alt="Delete" className="h-5 w-5" />
+                            <Image src="/trash-bin-red.svg" alt="Delete" width={20} height={20} />
                           </button>
                         )}
                       </div>
@@ -284,7 +338,23 @@ export default function Tickets() {
                         <div><strong>Work Order Description:</strong> {ticket.workOrderDescription}</div>
                         <div><strong>Time Availability:</strong> {ticket.timeAvailability}</div>
                         <div><strong>Status:</strong> {ticket.status}</div>
-                        {isAdmin && <div><strong>Assigned To:</strong> {ticket.assignedTo || 'Unassigned'}</div>}
+                        {isAdmin && (
+                          <div>
+                            <strong>Assigned To:</strong>
+                            <select
+                              value={assignedUsers[ticket._id!] || ticket.assignedTo || ''}
+                              onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value)}
+                              className="border p-1 rounded"
+                            >
+                              <option value="">Unassigned</option>
+                              {users.map((user) => (
+                                <option key={user} value={user}>
+                                  {user}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <div><strong>Created At:</strong> {new Date(ticket.createdAt).toLocaleString()}</div>
                         <div><strong>Updated At:</strong> {new Date(ticket.updatedAt).toLocaleString()}</div>
                       </td>

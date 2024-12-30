@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
 export default function CreateUser() {
+  const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -13,10 +14,10 @@ export default function CreateUser() {
     e.preventDefault();
     const authToken = localStorage.getItem('token'); // Get the auth token from local storage
     if (!authToken) {
-      toast.error('No auth token found');
+      toast.error('No auth token, please sign out and sign in again');
       return;
     }
-
+    setLoading(true);
     const response = await fetch('/api/users/register', {
       method: 'POST',
       headers: {
@@ -25,10 +26,9 @@ export default function CreateUser() {
       },
       body: JSON.stringify({ username, password, isAdmin }),
     });
-
+    setLoading(false);
     if (response.ok) {
       toast.success('User created successfully');
-      router.push('/login');
     } else {
       const data = await response.json();
       toast.error(data.error || 'Failed to create user');
@@ -88,6 +88,11 @@ export default function CreateUser() {
               Cancel
             </button>
           </div>
+          {loading && (
+          <div className="loader-container">
+            <div className="loader"></div>
+          </div>
+        )}
         </form>
       </div>
     </div>

@@ -25,29 +25,8 @@ class RegistrationHandler {
 
     return NextResponse.json({ message: 'User created successfully' }, { status: 201 });
   }
-
-  @Auth()
-  async GET(req: NextRequest) {
-    await connectToDatabase();
-    const { username, password } = await req.json();
-
-    // Find the user
-    const user = await User.findOne({ username });
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-    }
-
-    // Check the password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-    }
-
-    return NextResponse.json({ message: 'Login successful' }, { status: 200 });
-  }
 }
 
 const handler = new RegistrationHandler();
 
 export const POST = handler.POST.bind(handler);
-export const GET = handler.GET.bind(handler);

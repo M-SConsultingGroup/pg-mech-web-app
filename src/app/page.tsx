@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { getLogger } from '@/lib/logger';
 import { Autocomplete } from '@react-google-maps/api';
@@ -21,8 +21,13 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [disclaimer, setDisclaimer] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [recaptchaKey, setRecaptchaKey] = useState<string>('');
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA | null>(null);
+
+  useEffect(() => {
+    setRecaptchaKey(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '');
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
@@ -75,11 +80,15 @@ export default function Home() {
       });
       setLoading(false);
       if (response.ok) {
+        const responseData = await response.json();
+        const ticketId = responseData.ticketId;
+
         toast.success('Ticket submitted successfully', {
           className: 'text-xl'
         });
 
-        // Send text message
+        // Send text message with reschedule link
+        const rescheduleLink = `${window.location.origin}/reschedule?ticketId=${ticketId}`;
         const smsResponse = await fetch('/api/send-sms', {
           method: 'POST',
           headers: {
@@ -87,7 +96,7 @@ export default function Home() {
           },
           body: JSON.stringify({
             phone: formData.phoneNumber,
-            message: `Hi ${formData.name}, Thank you for submitting a ticket. Our Technician will contact you soon.`,
+            message: `Hi ${formData.name}, Thank you for submitting a ticket. Our Technician will contact you soon. If you need to reschedule, please use the following link: ${rescheduleLink}`,
           }),
         });
 
@@ -227,7 +236,7 @@ export default function Home() {
         <div className="mb-4">
           <ReCAPTCHA
             ref={recaptchaRef}
-            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
+            sitekey={recaptchaKey}
             onChange={handleRecaptchaChange}
           />
         </div>

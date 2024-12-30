@@ -31,8 +31,6 @@ export default function Login() {
     const correlationId = getCorrelationId();
     const loggerWithCorrelationId = logger.child({ correlationId });
   
-    loggerWithCorrelationId.debug('Starting login process');
-  
     try {
       const response = await fetch('/api/users/login', {
         method: 'POST',
@@ -45,7 +43,7 @@ export default function Login() {
       const data = await response.json();
       setLoading(false);
       if (response.ok) {
-        loggerWithCorrelationId.debug('Login successful');
+        loggerWithCorrelationId.debug('Login successful : ', data.username);
         login(data.username, data.token);
         toast.success('Login successful', {
           className: 'text-xl',
@@ -53,15 +51,15 @@ export default function Login() {
         router.push('/tickets');
       } else {
         loggerWithCorrelationId.warn('Login failed', data);
-        throw new Error(data.message || 'Invalid Username or Password');
+        throw new Error(data.error);
       }
     } catch (error) {
-      loggerWithCorrelationId.error('Login error:', error);
-      if (error instanceof Error && error.message === 'Invalid Username or Password') {
+      if (error instanceof Error && error.message === 'Invalid credentials') {
         toast.error('Invalid Username or Password', {
           className: 'text-xl',
         });
       } else {
+        loggerWithCorrelationId.error('Login error:', error);
         toast.error('An error occurred, please try again', {
           className: 'text-xl',
         });

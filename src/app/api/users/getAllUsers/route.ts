@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import User from '@/models/user';
 import connectToDatabase from '@/lib/mongodb';
 import { Auth } from '@/utils/decorators';
 
 class UserHandler {
   @Auth()
-  async GET(req: NextRequest) {
+  async GET() {
     await connectToDatabase();
     const users = await User.find({}, 'username');
     return NextResponse.json(users);

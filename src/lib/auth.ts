@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as jwt from 'jsonwebtoken';
 
 interface ExtendedNextRequest extends NextRequest {
-  user?: any;
+  user?: string | object;
 };
 
 export async function authMiddleware(req: ExtendedNextRequest) {
@@ -18,7 +18,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded; // Attach the decoded user to the request object
     return null; // No error
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 }

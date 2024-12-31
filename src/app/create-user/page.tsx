@@ -29,6 +29,7 @@ export default function CreateUser() {
     setLoading(false);
     if (response.ok) {
       toast.success('User created successfully');
+      router.push('/tickets');
     } else {
       const data = await response.json();
       toast.error(data.error || 'Failed to create user');

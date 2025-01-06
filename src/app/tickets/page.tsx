@@ -1,12 +1,13 @@
 "use client";
-
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { ITicket } from '@/common/interfaces';
+import { ITicket, Priority } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
+import PriorityModal from '@/components/PriorityModal';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import Modal from 'react-modal';
+import React, { useState, useEffect } from 'react';
 
 export default function Tickets() {
   const { username, isAdmin } = useAuth();
@@ -20,10 +21,21 @@ export default function Tickets() {
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
   const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
   const router = useRouter();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [modalHandlers, setModalHandlers] = useState<{ handleSelectPriority: (priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest') => void, handleCloseModal: () => void } | null>(null);
 
   useEffect(() => {
+    Modal.setAppElement('#table');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log(token);
+      router.push('/login');
+      return;
+    }
+
     const fetchTickets = async () => {
-      const token = localStorage.getItem('token');
       const response = await fetch('/api/tickets', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -34,7 +46,6 @@ export default function Tickets() {
     };
 
     const fetchUsers = async () => {
-      const token = localStorage.getItem('token');
       const response = await fetch('/api/users/getAllUsers', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -43,13 +54,13 @@ export default function Tickets() {
       const data = await response.json();
       setUsers(data.map((user: { username: string }) => user.username));
     };
-  
+
     const fetchData = async () => {
       await Promise.all([fetchTickets(), fetchUsers()]);
     };
-  
+
     fetchData();
-  }, []);
+  }, [router]);
 
   const handleRowToggle = (ticketId: string) => {
     setExpandedRows((prev) => {
@@ -86,7 +97,7 @@ export default function Tickets() {
     if (!confirmed) {
       return;
     }
-  
+
     const token = localStorage.getItem('token');
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'DELETE',
@@ -94,12 +105,33 @@ export default function Tickets() {
         'Authorization': `Bearer ${token}`
       }
     });
-  
+
     if (response.ok) {
       setTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
     } else {
       toast.error('Failed to delete ticket');
     }
+  };
+
+  const openPriorityModal = (ticketId: string, user: string): Promise<Priority | null> => {
+    return new Promise((resolve) => {
+      setCurrentTicketId(ticketId);
+      setCurrentUser(user);
+      setIsModalOpen(true);
+  
+      const handleSelectPriority = (priority: Priority) => {
+        resolve(priority);
+        setIsModalOpen(false);
+      };
+  
+      const handleCloseModal = () => {
+        resolve(null);
+        setIsModalOpen(false);
+      };
+  
+      // Attach handlers to the modal
+      setModalHandlers({ handleSelectPriority, handleCloseModal });
+    });
   };
 
   const handleAssignedUserChange = async (ticketId: string, user: string) => {
@@ -109,6 +141,17 @@ export default function Tickets() {
       [ticketId]: user,
     }));
   
+    // Open the modal and get the priority value
+    const priority = await openPriorityModal(ticketId, user);
+  
+    if (priority === null || priority === '') {
+      setAssignedUsers((prev) => ({
+        ...prev,
+        [ticketId]: previousUser,
+      }));
+      return;
+    }
+  
     const token = localStorage.getItem('token');
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'PUT',
@@ -116,14 +159,14 @@ export default function Tickets() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ ticketId, assignedTo: user, status: 'Open' })
+      body: JSON.stringify({ ticketId, assignedTo: user, status: 'Open', priority })
     });
   
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
         prev.map((ticket) =>
-          ticket._id === ticketId ? { ...ticket, assignedTo: user, status: 'Open' } : ticket
+          ticket._id === ticketId ? { ...ticket, assignedTo: user, status: 'Open', priority } : ticket
         )
       );
       toast.success('Ticket updated successfully');
@@ -163,7 +206,7 @@ export default function Tickets() {
     : filteredTickets.filter((ticket) => ticket.assignedTo === username);
 
   return (
-    <div className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">
+    <div id="table" className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">
       {isAdmin && (
         <div className="w-full bg-white p-2 rounded-lg shadow-lg">
           <h1 className="text-2xl font-bold text-gray-800">Overview</h1>
@@ -208,11 +251,11 @@ export default function Tickets() {
               className="border p-1 rounded"
             >
               <option value="">Filter by Status</option>
-                {TICKET_STATUSES.map((status: string) => (
+              {TICKET_STATUSES.map((status: string) => (
                 <option key={status} value={status}>
                   {status}
                 </option>
-                ))}
+              ))}
             </select>
             {isAdmin && (
               <select
@@ -305,7 +348,7 @@ export default function Tickets() {
                           <option value="">Unassigned</option>
                           {users.map((user) => (
                             <option key={user} value={user}>
-                              {user}
+                              {user || 'Unassigned'}
                             </option>
                           ))}
                         </select>
@@ -349,7 +392,7 @@ export default function Tickets() {
                               <option value="">Unassigned</option>
                               {users.map((user) => (
                                 <option key={user} value={user}>
-                                  {user}
+                                  {user || 'Unassigned'}
                                 </option>
                               ))}
                             </select>
@@ -365,6 +408,19 @@ export default function Tickets() {
             </tbody>
           </table>
         </div>
+        <PriorityModal
+          isOpen={isModalOpen}
+          onRequestClose={() => {
+            if (modalHandlers) {
+              modalHandlers.handleCloseModal();
+            }
+          }}
+          onSelectPriority={(priority) => {
+            if (modalHandlers) {
+              modalHandlers.handleSelectPriority(priority);
+            }
+          }}
+        />
       </div>
     </div>
   );

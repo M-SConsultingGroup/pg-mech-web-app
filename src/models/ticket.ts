@@ -16,12 +16,13 @@ const ticketSchema = new Schema<ITicketDocument>({
   assignedTo: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-  partsUsed: {type : [String], default: []},
-  servicesDelivered: {type : String, default: ''},
-  additionalNotes: {type : String, default: ''},
-  amountBilled : {type : Number, default: 0},
-  amountPaid: {type : Number, default: 0},
+  partsUsed: { type: [String], default: [] },
+  servicesDelivered: { type: String, default: '' },
+  additionalNotes: { type: String, default: '' },
+  amountBilled: { type: Number, default: 0 },
+  amountPaid: { type: Number, default: 0 },
   images: [{ type: String, default: [] }],
+  priority: { type: String, enum: ['Highest', 'High', 'Medium', 'Low', 'Lowest'], default: '' },
 });
 
 const Ticket = model<ITicketDocument>('Ticket', ticketSchema);

@@ -17,4 +17,7 @@ export interface ITicket {
   amountBilled?: number;
   amountPaid?: string;
   images?: { type: string, default: [] }[];
+  priority?: Priority;
 }
+
+export type Priority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | '';

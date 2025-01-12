@@ -50,7 +50,7 @@
 .loader-container {
   position: absolute;
   inset: 0;
-  background-color: rgba(128, 128, 128, 0.75); /* Adjust the color and opacity as needed */
+  background-color: rgba(128, 128, 128, 0.75); 
   display: flex;
   align-items: center;
   justify-content: center;

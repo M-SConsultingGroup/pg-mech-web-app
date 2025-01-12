@@ -51,23 +51,32 @@ export default function Header() {
           </button>
         )}
         {dropdownOpen && isLoggedIn && (
-          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded shadow-lg">
+          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded shadow-lg z-50">
             {isAdmin && (
               <button
-                onClick={() => router.push('/create-user')}
+                onClick={() => {
+                  setDropdownOpen(false);
+                  router.push('/create-user');
+                }}
                 className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
               >
                 Create User
               </button>
             )}
             <button
-              onClick={() => router.push('/tickets')}
+              onClick={() => {
+                setDropdownOpen(false);
+                router.push('/tickets');
+              }}
               className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
             >
               Tickets
             </button>
             <button
-              onClick={handleSignOut}
+              onClick={() => {
+                setDropdownOpen(false);
+                handleSignOut();
+              }}
               className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
             >
               Sign Out

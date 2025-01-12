@@ -163,7 +163,7 @@ export default function Home() {
           <div className="flex items-center">
             <span className="mr-2 border p-2 rounded">+1</span>
             <MaskedInput
-              mask={['(', /[1-9]/, /\d/, /\d/, ')', ' ', /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/, /\d/]}
+              mask={['(', /[1-9]/, /\d/, /\d/, ')', /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/, /\d/]}
               value={formData.phoneNumber}
               onChange={handleInputChange}
               placeholder="Message and data rates may apply"
@@ -230,7 +230,7 @@ export default function Home() {
               className="mr-2"
               required
             />
-            I understand that there will be a minimum service fee of $80.
+            I understand that there will be a minimum service fee of $79.
           </label>
         </div>
         <div className="mb-4">

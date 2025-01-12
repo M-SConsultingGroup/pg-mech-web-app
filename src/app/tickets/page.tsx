@@ -118,17 +118,17 @@ export default function Tickets() {
       setCurrentTicketId(ticketId);
       setCurrentUser(user);
       setIsModalOpen(true);
-  
+
       const handleSelectPriority = (priority: Priority) => {
         resolve(priority);
         setIsModalOpen(false);
       };
-  
+
       const handleCloseModal = () => {
         resolve(null);
         setIsModalOpen(false);
       };
-  
+
       // Attach handlers to the modal
       setModalHandlers({ handleSelectPriority, handleCloseModal });
     });
@@ -140,10 +140,10 @@ export default function Tickets() {
       ...prev,
       [ticketId]: user,
     }));
-  
+
     // Open the modal and get the priority value
     const priority = await openPriorityModal(ticketId, user);
-  
+
     if (priority === null || priority === '') {
       setAssignedUsers((prev) => ({
         ...prev,
@@ -151,7 +151,7 @@ export default function Tickets() {
       }));
       return;
     }
-  
+
     const token = localStorage.getItem('token');
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'PUT',
@@ -161,7 +161,7 @@ export default function Tickets() {
       },
       body: JSON.stringify({ ticketId, assignedTo: user, status: 'Open', priority })
     });
-  
+
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
@@ -207,7 +207,7 @@ export default function Tickets() {
 
   return (
     <div id="table" className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">
-      {isAdmin && (
+      {/* Overview */}{isAdmin && (
         <div className="w-full bg-white p-2 rounded-lg shadow-lg">
           <h1 className="text-2xl font-bold text-gray-800">Overview</h1>
           <div className="mt-1">
@@ -295,16 +295,16 @@ export default function Tickets() {
           <table className="min border-collapse border border-gray-400 w-full">
             <thead>
               <tr>
-                <th className="border border-gray-400 p-2 pr-4">Ticket Number</th>
+                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Ticket Number</th>
                 <th className="border border-gray-400 p-2 pr-4">Name</th>
                 <th className="border border-gray-400 p-2 pr-4">Service Address</th>
                 {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Email</th>}
-                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Phone Number</th>
+                <th className="border border-gray-400 p-2 pr-4">Phone Number</th>
                 <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Work Order Description</th>
                 <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Time Availability</th>
                 <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Status</th>
                 {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Assigned To</th>}
-                <th className="border border-gray-400 p-2 pr-4">Actions</th>
+                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -314,31 +314,31 @@ export default function Tickets() {
                     className={`cursor-pointer ${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`}
                     onClick={() => handleRowToggle(ticket._id!)}
                   >
-                    <td className="border border-gray-400 p-2 pr-4">{ticket.ticketNumber}</td>
+                    <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.ticketNumber}</td>
                     <td className="border border-gray-400 p-2 pr-4">{ticket.name}</td>
-                    <td className="border border-gray-400 p-2 pr-4">
+                    {/* Service Address */}<td className="border border-gray-400 p-2 pr-4">
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.serviceAddress || '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline"
+                        className="block border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline break-words whitespace-normal"
                       >
                         {ticket.serviceAddress || ''}
                       </a>
                     </td>
                     {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.email}</td>}
-                    <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
+                    {/* Phone Number */}<td className="border border-gray-400 p-2 pr-4">
                       <a
                         href={`tel:${ticket.phoneNumber}`}
-                        className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100"
+                        className="block border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100 whitespace-nowrap"
                       >
-                        {ticket.phoneNumber || ''}
+                        {ticket.phoneNumber.replace(/\s+/g, '') || ''}
                       </a>
                     </td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.workOrderDescription}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.timeAvailability}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.status}</td>
-                    {isAdmin && (
+                    {/* Assigned To */}{isAdmin && (
                       <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
                         <select
                           value={assignedUsers[ticket._id!] || ticket.assignedTo || ''}
@@ -354,7 +354,7 @@ export default function Tickets() {
                         </select>
                       </td>
                     )}
-                    <td className="border border-gray-400 p-2 pr-4">
+                    {/* Actions */}<td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
                       <div className="flex items-center space-x-1">
                         <button
                           onClick={() => router.push(`/tickets/${ticket._id}`)}
@@ -373,15 +373,15 @@ export default function Tickets() {
                       </div>
                     </td>
                   </tr>
-                  {expandedRows.has(ticket._id!) && (
+                  {/* Hidden rows */}{expandedRows.has(ticket._id!) && (
                     <tr className="md:hidden">
-                      <td colSpan={4} className="border border-gray-400">
+                      <td colSpan={3} className="border border-gray-400">
                         <div><strong>Email:</strong> {ticket.email}</div>
                         <div><strong>Phone Number:</strong> {ticket.phoneNumber}</div>
                         <div><strong>Work Order Description:</strong> {ticket.workOrderDescription}</div>
                         <div><strong>Time Availability:</strong> {ticket.timeAvailability}</div>
                         <div><strong>Status:</strong> {ticket.status}</div>
-                        {isAdmin && (
+                        {/* Assigned To */} {isAdmin && (
                           <div>
                             <strong>Assigned To:</strong>
                             <select
@@ -398,8 +398,22 @@ export default function Tickets() {
                             </select>
                           </div>
                         )}
-                        <div><strong>Created At:</strong> {new Date(ticket.createdAt).toLocaleString()}</div>
-                        <div><strong>Updated At:</strong> {new Date(ticket.updatedAt).toLocaleString()}</div>
+                        <div className="flex items-center space-x-1"><strong>Actions:</strong>
+                          <button
+                            onClick={() => router.push(`/tickets/${ticket._id}`)}
+                            className="bg-yellow-500 p-1 rounded flex items-center"
+                          >
+                            <Image src="/edit-pen.svg" alt="Edit" width={20} height={20} />
+                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleRowDelete(ticket._id || '')}
+                              className="border border-gray-500 p-1 rounded flex items-center"
+                            >
+                              <Image src="/trash-bin-red.svg" alt="Delete" width={20} height={20} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}

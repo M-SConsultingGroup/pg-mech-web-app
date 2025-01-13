@@ -140,22 +140,34 @@ export default function Tickets() {
       ...prev,
       [ticketId]: user,
     }));
-
+  
     const token = localStorage.getItem('token');
+    let status = 'Open';
+    let priority = '';
+  
+    if (user === 'Unassigned') {
+      status = 'New';
+    } else {
+      const selectedPriority = await openPriorityModal(ticketId, user);
+      if (selectedPriority) {
+        priority = selectedPriority;
+      }
+    }
+  
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ ticketId, assignedTo: user, status: 'New', priority: '' })
+      body: JSON.stringify({ ticketId, assignedTo: user, status, priority })
     });
   
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
         prev.map((ticket) =>
-          ticket._id === ticketId ? { ...ticket, assignedTo: user, status: 'New', priority: '' } : ticket
+          ticket._id === ticketId ? { ...ticket, assignedTo: user, status, priority: priority as Priority } : ticket
         )
       );
       toast.success('Ticket updated successfully');

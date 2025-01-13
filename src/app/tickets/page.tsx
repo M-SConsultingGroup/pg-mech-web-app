@@ -151,6 +151,8 @@ export default function Tickets() {
       const selectedPriority = await openPriorityModal(ticketId, user);
       if (selectedPriority) {
         priority = selectedPriority;
+      } else {
+        return;
       }
     }
   

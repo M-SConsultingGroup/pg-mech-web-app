@@ -143,6 +143,7 @@ const TicketDetails = () => {
       if (response.ok) {
         setLoading(false);
         toast.success('Ticket updated successfully');
+        router.push('/tickets');
       } else {
         toast.error('Failed to update ticket ... Try again later');
         logger.error('Error saving ticket:', response);

@@ -24,7 +24,7 @@ export default function Tickets() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [modalHandlers, setModalHandlers] = useState<{ handleSelectPriority: (priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest') => void, handleCloseModal: () => void } | null>(null);
+  const [modalHandlers, setModalHandlers] = useState<{ handleSelectPriority: (priority: Priority) => void, handleCloseModal: () => void } | null>(null);
 
   useEffect(() => {
     Modal.setAppElement('#table');
@@ -141,17 +141,6 @@ export default function Tickets() {
       [ticketId]: user,
     }));
 
-    // Open the modal and get the priority value
-    const priority = await openPriorityModal(ticketId, user);
-
-    if (priority === null || priority === '') {
-      setAssignedUsers((prev) => ({
-        ...prev,
-        [ticketId]: previousUser,
-      }));
-      return;
-    }
-
     const token = localStorage.getItem('token');
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'PUT',
@@ -159,14 +148,14 @@ export default function Tickets() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ ticketId, assignedTo: user, status: 'Open', priority })
+      body: JSON.stringify({ ticketId, assignedTo: user, status: 'New', priority: '' })
     });
-
+  
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
         prev.map((ticket) =>
-          ticket._id === ticketId ? { ...ticket, assignedTo: user, status: 'Open', priority } : ticket
+          ticket._id === ticketId ? { ...ticket, assignedTo: user, status: 'New', priority: '' } : ticket
         )
       );
       toast.success('Ticket updated successfully');
@@ -176,6 +165,23 @@ export default function Tickets() {
         [ticketId]: previousUser,
       }));
       toast.error('Failed to update ticket');
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'Highest':
+        return 'bg-red-500';
+      case 'High':
+        return 'bg-orange-500';
+      case 'Medium':
+        return 'bg-yellow-500';
+      case 'Low':
+        return 'bg-green-500';
+      case 'Lowest':
+        return 'bg-blue-500';
+      default:
+        return '';
     }
   };
 
@@ -272,6 +278,12 @@ export default function Tickets() {
               </select>
             )}
             <button
+              onClick={() => handleSort('priority')}
+              className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
+            >
+              Sort by Priority
+            </button>
+            <button
               onClick={() => handleSort('name')}
               className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
             >
@@ -282,12 +294,6 @@ export default function Tickets() {
               className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
             >
               Sort by Address
-            </button>
-            <button
-              onClick={() => router.push('/')}
-              className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
-            >
-              + New
             </button>
           </div>
         </div>
@@ -311,7 +317,7 @@ export default function Tickets() {
               {displayedTickets.map((ticket: ITicket, index) => (
                 <React.Fragment key={ticket._id}>
                   <tr
-                    className={`cursor-pointer ${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`}
+                    className={`cursor-pointer ${getPriorityColor(ticket.priority || '')} }`}
                     onClick={() => handleRowToggle(ticket._id!)}
                   >
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.ticketNumber}</td>

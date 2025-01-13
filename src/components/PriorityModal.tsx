@@ -1,14 +1,15 @@
+import { Priority } from '@/common/interfaces';
 import React, { useState } from 'react';
 import Modal from 'react-modal';
 
 interface PriorityModalProps {
   isOpen: boolean;
   onRequestClose: () => void;
-  onSelectPriority: (priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest') => void;
+  onSelectPriority: (priority: Priority) => void;
 }
 
 const PriorityModal: React.FC<PriorityModalProps> = ({ isOpen, onRequestClose, onSelectPriority }) => {
-  const [selectedPriority, setSelectedPriority] = useState<'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest'>('Medium');
+  const [selectedPriority, setSelectedPriority] = useState<Priority>('Medium');
 
   const handleSelect = () => {
     onSelectPriority(selectedPriority);
@@ -32,7 +33,7 @@ const PriorityModal: React.FC<PriorityModalProps> = ({ isOpen, onRequestClose, o
                 type="radio"
                 value={priority}
                 checked={selectedPriority === priority}
-                onChange={() => setSelectedPriority(priority as 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest')}
+                onChange={() => setSelectedPriority(priority as Priority)}
                 className="form-radio text-blue-600"
               />
               <span>{priority}</span>

@@ -20,4 +20,9 @@ export interface ITicket {
   priority?: Priority;
 }
 
+export interface Parts {
+  category: string;
+  parts:    string[];
+}
+
 export type Priority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | '';

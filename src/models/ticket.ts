@@ -22,7 +22,7 @@ const ticketSchema = new Schema<ITicketDocument>({
   amountBilled: { type: Number, default: 0 },
   amountPaid: { type: Number, default: 0 },
   images: [{ type: String, default: [] }],
-  priority: { type: String, enum: ['Highest', 'High', 'Medium', 'Low', 'Lowest'], default: '' },
+  priority: { type: String, enum: ['', 'Highest', 'High', 'Medium', 'Low', 'Lowest'], default: '' },
 });
 
 const Ticket = model<ITicketDocument>('Ticket', ticketSchema);

@@ -1,14 +1,16 @@
 'use client';
 
+import imageCompression from 'browser-image-compression';
+import toast from 'react-hot-toast';
+import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ITicket } from '@/common/interfaces';
 import { getLogger } from '@/lib/logger';
 import { getCorrelationId } from '@/utils/helpers';
-import imageCompression from 'browser-image-compression';
-import toast from 'react-hot-toast';
-import Image from 'next/image';
 import { TICKET_STATUSES } from '@/common/constants';
+import PartsModal from '@/components/PartsModal';
+import partsData from '@/common/partslist.json';
 
 let logger = getLogger();
 const correlationId = getCorrelationId();
@@ -24,8 +26,10 @@ const TicketDetails = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isPartsModalOpen, setIsPartsModalOpen] = useState(false);
 
   const filteredStatuses = TICKET_STATUSES.filter(status => status !== 'New');
+
   useEffect(() => {
     if (ticketId) {
       const fetchData = async () => {
@@ -170,6 +174,13 @@ const TicketDetails = () => {
     </div>
   );
 
+  const handlePartsModalDone = (selectedParts: string[]) => {
+    setEditedTicket((prev) => ({
+      ...prev,
+      partsUsed: [...(prev.partsUsed || []), ...selectedParts],
+    }));
+  };
+
   return (
     <div className="min-h-screen p-4 pb-10 flex flex-col items-center justify-center bg-gray-100 relative">
       <div className="flex items-center mb-4">
@@ -275,6 +286,13 @@ const TicketDetails = () => {
             onChange={handleInputChange}
             className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
+          <button
+            type="button"
+            onClick={() => setIsPartsModalOpen(true)}
+            className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded mt-2"
+          >
+            Select Parts
+          </button>
         </div>
         <div className="mb-2">
           <label className="block mb-1 text-gray-700">Services Delivered</label>
@@ -379,6 +397,12 @@ const TicketDetails = () => {
       {isModalOpen && selectedImage && (
         <ImageModal image={selectedImage} onClose={() => setIsModalOpen(false)} />
       )}
+      <PartsModal
+        parts={partsData.TotalParts}
+        isOpen={isPartsModalOpen}
+        onClose={() => setIsPartsModalOpen(false)}
+        onDone={handlePartsModalDone}
+      />
     </div>
   );
 };

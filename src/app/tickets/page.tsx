@@ -255,7 +255,7 @@ export default function Tickets() {
         </div>
       )}
       <div className="w-full bg-white p-4 rounded-lg shadow-lg">
-        <div className="filter-buttons flex flex-col md:flex-row flex-wrap justify-between items-center mb-2 space-y-2 md:space-y-0">
+        {/* Filters */}<div className="filter-buttons flex flex-col md:flex-row flex-wrap justify-between items-center mb-2 space-y-2 md:space-y-0">
           <h1 className="text-3xl font-bold text-gray-800">Tickets</h1>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
             <input
@@ -270,7 +270,7 @@ export default function Tickets() {
               onChange={handleStatusFilterChange}
               className="border p-1 rounded"
             >
-              <option value="">Filter by Status</option>
+              <option value="">All Statuses</option>
               {TICKET_STATUSES.map((status: string) => (
                 <option key={status} value={status}>
                   {status}
@@ -283,7 +283,7 @@ export default function Tickets() {
                 onChange={handleAssignedToFilterChange}
                 className="border p-1 rounded"
               >
-                <option value="">Filter by Assigned To</option>
+                <option value="">All Users</option>
                 {users.map((user) => (
                   <option key={user} value={user}>
                     {user}
@@ -361,14 +361,14 @@ export default function Tickets() {
                     {/* Assigned To */}{isAdmin && (
                       <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
                         <select
-                          value={assignedUsers[ticket._id!] || ticket.assignedTo || ''}
+                          value={assignedUsers[ticket._id!] || ticket.assignedTo || "Unassigned"}
                           onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value)}
                           className="border p-1 rounded"
                         >
-                          <option value="">Unassigned</option>
+                          <option value="Unassigned">Unassigned</option>
                           {users.map((user) => (
                             <option key={user} value={user}>
-                              {user || 'Unassigned'}
+                              {user}
                             </option>
                           ))}
                         </select>
@@ -405,14 +405,14 @@ export default function Tickets() {
                           <div>
                             <strong>Assigned To:</strong>
                             <select
-                              value={assignedUsers[ticket._id!] || ticket.assignedTo || ''}
+                              value={assignedUsers[ticket._id!] || ticket.assignedTo || 'Unassigned'}
                               onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value)}
                               className="border p-1 rounded"
                             >
-                              <option value="">Unassigned</option>
+                              <option value="Unassigned">Unassigned</option>
                               {users.map((user) => (
                                 <option key={user} value={user}>
-                                  {user || 'Unassigned'}
+                                  {user}
                                 </option>
                               ))}
                             </select>

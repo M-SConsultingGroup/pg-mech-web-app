@@ -134,7 +134,7 @@ export default function Tickets() {
     });
   };
 
-  const handleAssignedUserChange = async (ticketId: string, user: string) => {
+  const handleAssignedUserChange = async (ticketId: string, user: string, currentStatus: string) => {
     const previousUser = assignedUsers[ticketId] || '';
     setAssignedUsers((prev) => ({
       ...prev,
@@ -142,12 +142,10 @@ export default function Tickets() {
     }));
   
     const token = localStorage.getItem('token');
-    let status = 'Open';
+    let status = '';
     let priority = '';
-  
-    if (user === 'Unassigned') {
-      status = 'New';
-    } else {
+    if (currentStatus === 'New' && user !== 'Unassigned') {
+      status = 'Open';
       const selectedPriority = await openPriorityModal(ticketId, user);
       if (selectedPriority) {
         priority = selectedPriority;
@@ -162,7 +160,7 @@ export default function Tickets() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ ticketId, assignedTo: user, status, priority })
+      body: JSON.stringify({ ticketId, assignedTo: user, priority: priority, status: status})
     });
   
     if (response.ok) {
@@ -187,13 +185,13 @@ export default function Tickets() {
       case 'Highest':
         return 'bg-red-500';
       case 'High':
-        return 'bg-orange-500';
+        return 'bg-yellow-300';
       case 'Medium':
         return 'bg-yellow-500';
       case 'Low':
-        return 'bg-green-500';
+        return 'bg-green-300';
       case 'Lowest':
-        return 'bg-blue-500';
+        return 'bg-green-500';
       default:
         return '';
     }
@@ -362,7 +360,7 @@ export default function Tickets() {
                       <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
                         <select
                           value={assignedUsers[ticket._id!] || ticket.assignedTo || "Unassigned"}
-                          onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value)}
+                          onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value, ticket.status)}
                           className="border p-1 rounded"
                         >
                           <option value="Unassigned">Unassigned</option>
@@ -406,7 +404,7 @@ export default function Tickets() {
                             <strong>Assigned To:</strong>
                             <select
                               value={assignedUsers[ticket._id!] || ticket.assignedTo || 'Unassigned'}
-                              onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value)}
+                              onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value, ticket.status)}
                               className="border p-1 rounded"
                             >
                               <option value="Unassigned">Unassigned</option>

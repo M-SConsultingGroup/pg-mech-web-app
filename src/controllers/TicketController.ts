@@ -51,9 +51,20 @@ export const updateTicket = async (req: NextRequest) => {
     const id = searchParams.get('id');
     const body = await req.json();
     body.updatedAt = new Date();
+
+    // Logic to handle priority and status changes
+    if (body.assignedTo === 'Unassigned') {
+      body.status = 'New';
+      body.priority = '';
+    }
+
+    if (body.status != 'Open') {
+      body.priority = '';
+    }
+
     const ticket = await Ticket.findByIdAndUpdate(id, body, { new: true, runValidators: true });
     if (!ticket) {
-      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 204 });
     }
     return NextResponse.json(ticket);
   } catch (error) {

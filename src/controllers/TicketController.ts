@@ -58,7 +58,7 @@ export const updateTicket = async (req: NextRequest) => {
       body.priority = '';
     }
 
-    if (body.status != 'Open') {
+    if ( body.status != 'Open') {
       body.priority = '';
     }
 

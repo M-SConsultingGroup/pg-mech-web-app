@@ -25,4 +25,21 @@ export interface Parts {
   parts:    string[];
 }
 
+export interface User {
+  username: string;
+  password: string;
+  is_admin: boolean;
+}
+
+export interface TimeEntry {
+  user: string;
+  ticket: { ticketNumber: string };
+  startTime: string;
+  endTime: string;
+}
+
+export interface UserHours {
+  [user: string]: number;
+}
+
 export type Priority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | '';

@@ -7,7 +7,7 @@ class UserHandler {
   @Auth()
   async GET() {
     await connectToDatabase();
-    const users = await User.find({}, 'username');
+    const users = await User.find({is_admin: false}, 'username');
     return NextResponse.json(users);
   }
 }

@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ITicket, Priority } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import PriorityModal from '@/components/PriorityModal';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
@@ -10,6 +11,7 @@ import Modal from 'react-modal';
 import React, { useState, useEffect } from 'react';
 
 export default function Tickets() {
+  const router = useRouter();
   const { username, isAdmin } = useAuth();
   const [tickets, setTickets] = useState<ITicket[]>([]);
   const [users, setUsers] = useState<string[]>([]);
@@ -20,7 +22,6 @@ export default function Tickets() {
   const [statusFilter, setStatusFilter] = useState<string>(isAdmin ? 'New' : 'Open');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
   const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
-  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -144,8 +145,7 @@ export default function Tickets() {
     const token = localStorage.getItem('token');
     let status = '';
     let priority = '';
-    if (currentStatus === 'New') {
-      if( selectedUser !== 'Unassigned') {        
+    if (currentStatus === 'New' && selectedUser !== 'Unassigned') {
         status = 'Open';
         const selectedPriority = await openPriorityModal(ticketId, selectedUser);
         if (selectedPriority) {
@@ -153,20 +153,23 @@ export default function Tickets() {
         } else {
           return;
         }
-      } else {
-        priority = currentPriority
-      }
     }
   
+    const body = { 
+      ticketId, 
+      assignedTo: selectedUser, 
+      priority: priority === '' ? currentPriority : priority, 
+      status: status === '' ? currentStatus : status 
+    };
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ ticketId, assignedTo: selectedUser, priority: priority, status: status === '' ? currentStatus : status })
+      body: JSON.stringify(body)
     });
-  
+
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
@@ -243,7 +246,7 @@ export default function Tickets() {
               const closedTickets = userTickets.filter((ticket) => ticket.status === 'Closed').length;
 
               return (
-                <div key={user} className="p-1 bg-gray-100 rounded-lg shadow-md">
+                <div key={user} className="p-1 bg-gray-100 rounded-lg shadow-md" onClick={() => { setStatusFilter(''); setAssignedToFilter(user); }}>
                   <h2 className="text-base font-semibold text-gray-800">{user}</h2>
                   <div className="mt-1">
                     <p className="text-sm text-gray-600">Total: <span className="font-bold text-gray-800">{totalTickets}</span></p>

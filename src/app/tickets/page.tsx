@@ -5,6 +5,7 @@ import { TICKET_STATUSES } from '@/common/constants';
 import PriorityModal from '@/components/PriorityModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { useRouter } from 'next/navigation';
+import { Loader } from '@googlemaps/js-api-loader';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import Modal from 'react-modal';
@@ -25,6 +26,10 @@ export default function Tickets() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [selectedPhoneNumber, setSelectedPhoneNumber] = useState('');
+  const [selectedServiceAddress, setSelectedServiceAddress] = useState('');
+  const [smsHref, setSmsHref] = useState('');
   const [modalHandlers, setModalHandlers] = useState<{ handleSelectPriority: (priority: Priority) => void, handleCloseModal: () => void } | null>(null);
 
   useEffect(() => {
@@ -62,6 +67,60 @@ export default function Tickets() {
 
     fetchData();
   }, [router]);
+
+  const handlePhoneClick = async (phoneNumber: string, serviceAddress: string) => {
+    setSelectedPhoneNumber(phoneNumber);
+    setSelectedServiceAddress(serviceAddress);
+    setPopupVisible(true);
+
+    try {
+      const eta = await calculateETA(serviceAddress);
+      if (eta === '') {
+        setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.`);
+        return;
+      }
+      setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready,%20My%20ETA%20is%20${eta}`);
+    } catch (error) {
+      console.error(error);
+      setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.`);
+    }
+  };
+
+  const handleClosePopup = () => {
+    setPopupVisible(false);
+    setSelectedPhoneNumber('');
+    setSelectedServiceAddress('');
+  };
+
+  const calculateETA = async (destination: string) => {
+    const loader = new Loader({
+      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+      version: 'weekly',
+    });
+
+    const google = await loader.load();
+    const directionsService = new google.maps.DirectionsService();
+
+    return new Promise<string>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const origin = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+        const request = {
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        };
+
+        directionsService.route(request, (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK) {
+            const eta = result && result.routes[0] && result.routes[0].legs[0] && result.routes[0].legs[0].duration ? result.routes[0].legs[0].duration.text : '';
+            resolve(eta);
+          } else {
+            reject('Failed to calculate ETA');
+          }
+        });
+      });
+    });
+  };
 
   const handleRowToggle = (ticketId: string) => {
     setExpandedRows((prev) => {
@@ -353,12 +412,12 @@ export default function Tickets() {
                     </td>
                     {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.email}</td>}
                     {/* Phone Number */}<td className="border border-gray-400 p-2 pr-4">
-                      <a
-                        href={`tel:${ticket.phoneNumber}`}
+                      <button
+                        onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)}
                         className="block border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100 whitespace-nowrap"
                       >
                         {ticket.phoneNumber.replace(/\s+/g, '') || ''}
-                      </a>
+                      </button>
                     </td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.workOrderDescription}</td>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.timeAvailability}</td>
@@ -460,6 +519,35 @@ export default function Tickets() {
             }
           }}
         />
+        {popupVisible && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-4 rounded shadow-lg">
+            <p className="mb-4">Would you like to call or text {selectedPhoneNumber}?</p>
+            <div className="flex space-x-4">
+              <a
+                href={`tel:${selectedPhoneNumber}`}
+                className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
+                onClick={handleClosePopup}
+              >
+                Call
+              </a>
+              <a
+                href={smsHref}
+                className="bg-green-500 hover:bg-green-700 text-white p-2 rounded"
+                onClick={handleClosePopup}
+              >
+                Text
+              </a>
+              <button
+                onClick={handleClosePopup}
+                className="bg-gray-500 hover:bg-gray-700 text-white p-2 rounded"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

@@ -1,127 +1,52 @@
 {
   "TotalParts": [
-    {
-      "category": "Air Filters",
-      "parts": [
-        "Disposable Panel Filters",
-        "Pleated Air Filters",
-        "HEPA Filters",
-        "Electrostatic Filters",
-        "Carbon Filters"
-      ]
-    },
-    {
-      "category": "Thermostats",
-      "parts": [
-        "Programmable Thermostats",
-        "Non-Programmable Thermostats",
-        "Smart Thermostats",
-        "Wi-Fi Thermostats"
-      ]
-    },
-    {
-      "category": "Refrigerant Components",
-      "parts": [
-        "Refrigerant Lines",
-        "Refrigerant Valves",
-        "Refrigerant Tanks",
-        "Refrigerant Recovery Units"
-      ]
-    },
-    {
-      "category": "Blowers and Fans",
-      "parts": [
-        "Blower Motors",
-        "Fan Blades",
-        "Draft Inducer Motors",
-        "Blower Wheels"
-      ]
-    },
-    {
-      "category": "Compressors",
-      "parts": [
-        "Rotary Compressors",
-        "Scroll Compressors",
-        "Reciprocating Compressors",
-        "Hermetic Compressors"
-      ]
-    },
-    {
-      "category": "Condensers and Evaporators",
-      "parts": [
-        "Evaporator Coils",
-        "Condenser Coils",
-        "Expansion Valves",
-        "Condensate Drain Pans"
-      ]
-    },
-    {
-      "category": "Ductwork and Accessories",
-      "parts": [
-        "Flexible Ducts",
-        "Rigid Ducts",
-        "Dampers",
-        "Vent Covers",
-        "Duct Insulation"
-      ]
-    },
-    {
-      "category": "Electrical Components",
-      "parts": [
-        "Contactors",
-        "Capacitors",
-        "Relays",
-        "Transformers",
-        "Thermistors",
-        "Resistors",
-        "Diodes",
-        "Fuses",
-        "Circuit Breakers",
-        "Wiring Harnesses",
-        "Connectors",
-        "Terminal Blocks",
-        "Solenoids"
-      ]
-    },
-    {
-      "category": "Heating Components",
-      "parts": [
-        "Heat Exchangers",
-        "Burners",
-        "Igniters",
-        "Flame Sensors",
-        "Gas Valves",
-        "Heating Elements",
-        "Thermal Cutoffs",
-        "Limit Switches"
-      ]
-    },
-    {
-      "category": "Sensors and Controls",
-      "parts": [
-        "Pressure Sensors",
-        "Temperature Sensors",
-        "Humidity Sensors",
-        "Airflow Sensors",
-        "Control Boards",
-        "Thermostat Wiring Kits"
-      ]
-    },
-    {
-      "category": "Tools and Consumables",
-      "parts": [
-        "Refrigerant Gauges",
-        "Manifold Sets",
-        "Leak Detectors",
-        "Vacuum Pumps",
-        "Sealants",
-        "Tape (HVAC)",
-        "Pipe Insulation",
-        "Coil Cleaners",
-        "Zip Ties",
-        "Screwdrivers",
-        "Multimeters"
-      ]
-    }
+    "Filters",
+    "Thermostats",
+    "Refrigerant R-22",
+    "Refrigerant R-410A",
+    "Refrigerant R-134A",
+    "Refrigerant R-404A",
+    "Refrigerant R-407C",
+    "Refrigerant R-507",
+    "Refrigerant R-454",
+    "Refrigerant Lines",
+    "Refrigerant Valves",
+    "Blower Motors",
+    "Condenser Fan Motors",
+    "Fan Blades",
+    "Draft Inducer Motors",
+    "Blower Wheels",
+    "Compressors",
+    "Evaporator Coils",
+    "Condenser Coils",
+    "Expansion Valves",
+    "Condensate Drain Pans",
+    "Flexible Ducts",
+    "Rigid Ducts",
+    "Dampers",
+    "Vent Covers",
+    "Duct Insulation",
+    "Contactors",
+    "Capacitors",
+    "Relays",
+    "Transformers",
+    "Fuses",
+    "Circuit Breakers",
+    "Wiring Harnesses",
+    "Connectors",
+    "Solenoids",
+    "Heat Exchangers",
+    "Burners",
+    "Igniters",
+    "Flame Sensors",
+    "Gas Valves",
+    "Heating Elements",
+    "Thermal Cutoffs",
+    "Limit Switches",
+    "Pressure Sensors",
+    "Temperature Sensors",
+    "Humidity Sensors",
+    "Airflow Sensors",
+    "Control Boards"
   ]
 }

@@ -216,7 +216,7 @@ export default function Home() {
             name="timeAvailability"
             value={formData.timeAvailability}
             onChange={handleInputChange}
-            placeholder="When would you like for our technician to visit?"
+            placeholder="When would you like for our technician to visit?\n(e.g. Monday 12-4 PM) at least 4 hour window"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
           />

@@ -5,7 +5,7 @@ import Imap from 'imap-simple';
 const imapConfig = {
   imap: {
     user: `info@${process.env.NEXT_PUBLIC_SITE_NAME}`,
-    password: process.env.EMAIL_PASSWORD || (() => { throw new Error('EMAIL_PASSWORD is not defined'); })(),
+    password: process.env.EMAIL_PASSWORD || "",
     host: 'imap.privateemail.com',
     port: 993,
     tls: true,

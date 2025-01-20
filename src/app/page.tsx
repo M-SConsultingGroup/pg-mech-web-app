@@ -81,30 +81,35 @@ export default function Home() {
       setLoading(false);
       if (response.ok) {
         const responseData = await response.json();
-        const ticketId = responseData.ticketId;
+        const ticketId = responseData._id;
 
         toast.success('Ticket submitted successfully', {
           className: 'text-xl'
         });
 
-        // Send text message with reschedule link
-        const rescheduleLink = `${window.location.origin}/reschedule?ticketId=${ticketId}`;
-        const smsResponse = await fetch('/api/send-sms', {
+        // Send email with reschedule link
+        const rescheduleLink = `${window.location.origin}/reschedule/${ticketId}`;
+        const emailResponse = await fetch('/api/send-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            phone: formData.phoneNumber,
-            message: `Hi ${formData.name}, Thank you for submitting a ticket. Our Technician will contact you soon. If you need to reschedule, please use the following link: ${rescheduleLink}`,
+            to: formData.email,
+            subject: 'Ticket Submission Confirmation',
+            message: `Hi ${formData.name},\n
+            Thank you for submitting a ticket. Our Technician will contact you soon. 
+            If you need to reschedule or cancel to avoid the tech visitation fee of $79, 
+            please use the following link: ${rescheduleLink}
+            \nBest regards,\nPG Mechanical Support`
           }),
         });
 
-        const smsData = await smsResponse.json();
-        if (smsData.success) {
-          logger.info('SMS sent successfully.');
+        const emailData = await emailResponse.json();
+        if (emailData.success) {
+          logger.info('Email sent successfully.');
         } else {
-          logger.error(`SMS sending failed: ${smsData.error}`);
+          logger.error(`Email sending failed: ${emailData.error}`);
         }
         setFormData({
           name: '',
@@ -211,13 +216,13 @@ export default function Home() {
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Time Availability</label>
-          <input
-            type="text"
+          <textarea
             name="timeAvailability"
             value={formData.timeAvailability}
             onChange={handleInputChange}
-            placeholder="When would you like for our technician to visit?\n(e.g. Monday 12-4 PM) at least 4 hour window"
-            className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            placeholder={`When would you like for our technician to visit?\n(e.g. Monday 12-4 PM) at least 4 hour window`}
+            className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 whitespace-pre-wrap resize-none max-h-20 min-h-20"
+            rows={2}
             required
           />
         </div>

@@ -32,9 +32,9 @@ export default function Header() {
   return (
     <div className="bg-gradient-cycling flex justify-between items-center p-4 bg-gray-800 text-white">
       <header>
-        <img src="/logo.png" alt="Logo" className='w-16 h-16'/>
+        <img src="/logo.png" alt="Logo" className='w-16 h-16' onClick={() => router.push('/')}/>
       </header>
-      <h1 className="text-3xl font-bold text-black">PG Mechanical Board</h1>
+      <h1 className="text-3xl font-bold text-black">PG Mechanical</h1>
       <div className="relative" ref={dropdownRef}>
         {isLoggedIn ? (
           <button

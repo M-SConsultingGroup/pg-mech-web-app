@@ -205,20 +205,20 @@ export default function Tickets() {
     let status = '';
     let priority = '';
     if (currentStatus === 'New' && selectedUser !== 'Unassigned') {
-        status = 'Open';
-        const selectedPriority = await openPriorityModal(ticketId, selectedUser);
-        if (selectedPriority) {
-          priority = selectedPriority;
-        } else {
-          return;
-        }
+      status = 'Open';
+      const selectedPriority = await openPriorityModal(ticketId, selectedUser);
+      if (selectedPriority) {
+        priority = selectedPriority;
+      } else {
+        return;
+      }
     }
-  
-    const body = { 
-      ticketId, 
-      assignedTo: selectedUser, 
-      priority: priority === '' ? currentPriority : priority, 
-      status: status === '' ? currentStatus : status 
+
+    const body = {
+      ticketId,
+      assignedTo: selectedUser,
+      priority: priority === '' ? currentPriority : priority,
+      status: status === '' ? currentStatus : status
     };
     const response = await fetch(`/api/tickets?id=${ticketId}`, {
       method: 'PUT',
@@ -249,7 +249,7 @@ export default function Tickets() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'Highest':
-        return 'bg-red-500';
+        return 'bg-red-400';
       case 'High':
         return 'bg-yellow-300';
       case 'Medium':
@@ -305,8 +305,8 @@ export default function Tickets() {
               const closedTickets = userTickets.filter((ticket) => ticket.status === 'Closed').length;
 
               return (
-                <div key={user} className="p-1 bg-gray-100 rounded-lg shadow-md" onClick={() => { setStatusFilter(''); setAssignedToFilter(user); }}>
-                  <h2 className="text-base font-semibold text-gray-800">{user}</h2>
+                <div key={user} className={`p-1 rounded-lg shadow-md ${assignedToFilter === user ? 'bg-gray-300' : 'bg-gray-100'}`} onClick={() => { setStatusFilter(''); setAssignedToFilter(user); }}>
+                  <h2 className={`text-base font-semibold text-gray-800 ${assignedToFilter === user ? 'text-xl' : ''}`}>{user}</h2>
                   <div className="mt-1">
                     <p className="text-sm text-gray-600">Total: <span className="font-bold text-gray-800">{totalTickets}</span></p>
                     <p className="text-sm text-gray-600">Open: <span className="font-bold text-gray-800">{openTickets}</span></p>
@@ -320,7 +320,7 @@ export default function Tickets() {
       )}
       <div className="w-full bg-white p-4 rounded-lg shadow-lg">
         {/* Filters */}<div className="filter-buttons flex flex-col md:flex-row flex-wrap justify-between items-center mb-2 space-y-2 md:space-y-0">
-          <h1 className="text-3xl font-bold text-gray-800">Tickets</h1>
+          <h1 className="text-3xl font-bold text-gray-800 text-center">{`${statusFilter} ${assignedToFilter === '' ? assignedToFilter : assignedToFilter + '\'s'} Tickets`}</h1>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
             <input
               type="text"
@@ -380,10 +380,11 @@ export default function Tickets() {
             <thead>
               <tr>
                 <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Ticket Number</th>
+                <th className="border border-gray-400 p-2 pr-4">Priority</th>
                 <th className="border border-gray-400 p-2 pr-4">Name</th>
                 <th className="border border-gray-400 p-2 pr-4">Service Address</th>
                 {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Email</th>}
-                <th className="border border-gray-400 p-2 pr-4">Phone Number</th>
+                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Phone Number</th>
                 <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Work Order Description</th>
                 <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Time Availability</th>
                 <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Status</th>
@@ -394,11 +395,13 @@ export default function Tickets() {
             <tbody>
               {displayedTickets.map((ticket: ITicket, index) => (
                 <React.Fragment key={ticket._id}>
-                  <tr
-                    className={`cursor-pointer ${getPriorityColor(ticket.priority || '')} }`}
-                    onClick={() => handleRowToggle(ticket._id!)}
-                  >
+                  <tr onClick={() => handleRowToggle(ticket._id!)}>
                     <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.ticketNumber}</td>
+                    <td className="border border-gray-400 p-2">
+                      <div className="flex items-center justify-center">
+                        <span className={`inline-block w-6 h-6 rounded-full mr-2 outline-1 ${ticket.priority === '' ? 'outline-dashed': getPriorityColor(ticket.priority || '')}`}></span>
+                      </div>
+                    </td>
                     <td className="border border-gray-400 p-2 pr-4">{ticket.name}</td>
                     {/* Service Address */}<td className="border border-gray-400 p-2 pr-4">
                       <a
@@ -411,7 +414,7 @@ export default function Tickets() {
                       </a>
                     </td>
                     {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.email}</td>}
-                    {/* Phone Number */}<td className="border border-gray-400 p-2 pr-4">
+                    {/* Phone Number */}<td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
                       <button
                         onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)}
                         className="block border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100 whitespace-nowrap"
@@ -459,7 +462,7 @@ export default function Tickets() {
                   </tr>
                   {/* Hidden rows */}{expandedRows.has(ticket._id!) && (
                     <tr className="md:hidden">
-                      <td colSpan={3} className="border border-gray-400">
+                      <td colSpan={3} className="border border-gray-400 space-y-1">
                         <div><strong>Email:</strong> {ticket.email}</div>
                         <div><strong>Phone Number:</strong> {ticket.phoneNumber}</div>
                         <div><strong>Work Order Description:</strong> {ticket.workOrderDescription}</div>
@@ -482,12 +485,18 @@ export default function Tickets() {
                             </select>
                           </div>
                         )}
-                        <div className="flex items-center space-x-1"><strong>Actions:</strong>
+                        <div className="flex items-center space-x-4"><strong>Actions:</strong>
                           <button
                             onClick={() => router.push(`/tickets/${ticket._id}`)}
                             className="bg-yellow-500 p-1 rounded flex items-center"
                           >
                             <Image src="/edit-pen.svg" alt="Edit" width={20} height={20} />
+                          </button>
+                          <button
+                            onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)}
+                            className="bg-gray-500 p-1 rounded flex items-center"
+                          >
+                            <Image src="/phone-call.svg" alt="Edit" width={20} height={20} />
                           </button>
                           {isAdmin && (
                             <button
@@ -520,34 +529,34 @@ export default function Tickets() {
           }}
         />
         {popupVisible && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-4 rounded shadow-lg">
-            <p className="mb-4">Would you like to call or text {selectedPhoneNumber}?</p>
-            <div className="flex space-x-4">
-              <a
-                href={`tel:${selectedPhoneNumber}`}
-                className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
-                onClick={handleClosePopup}
-              >
-                Call
-              </a>
-              <a
-                href={smsHref}
-                className="bg-green-500 hover:bg-green-700 text-white p-2 rounded"
-                onClick={handleClosePopup}
-              >
-                Text
-              </a>
-              <button
-                onClick={handleClosePopup}
-                className="bg-gray-500 hover:bg-gray-700 text-white p-2 rounded"
-              >
-                Cancel
-              </button>
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white p-4 rounded shadow-lg">
+              <p className="mb-4">Would you like to call or text {selectedPhoneNumber}?</p>
+              <div className="flex space-x-4">
+                <a
+                  href={`tel:${selectedPhoneNumber}`}
+                  className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
+                  onClick={handleClosePopup}
+                >
+                  Call
+                </a>
+                <a
+                  href={`sms:${selectedPhoneNumber}`}
+                  className="bg-green-500 hover:bg-green-700 text-white p-2 rounded"
+                  onClick={handleClosePopup}
+                >
+                  Text
+                </a>
+                <button
+                  onClick={handleClosePopup}
+                  className="bg-gray-500 hover:bg-gray-700 text-white p-2 rounded"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );

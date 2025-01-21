@@ -58,6 +58,10 @@ export const updateTicket = async (req: NextRequest) => {
       body.priority = '';
     }
 
+    if (body.status !== 'Open') {
+      body.priority = '';
+    }
+
     const ticket = await Ticket.findByIdAndUpdate(id, body, { new: true, runValidators: true });
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 204 });

@@ -39,7 +39,7 @@ export default function Reschedule() {
 
     try {
       const response = await fetch(`/api/tickets/${ticketId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -65,11 +65,11 @@ export default function Reschedule() {
 
   const handleCancel = async (): Promise<void> => {
     setLoading(true);
-
+  
     const logger = getLogger();
-
+  
     try {
-      const response = await fetch(`/api/tickets/${ticketId}`, {
+      const response = await fetch(`/api/tickets/${ticketId}/conditional`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'

@@ -116,3 +116,52 @@ export const deleteTicket = async (req: NextRequest) => {
     return NextResponse.json({ error: (error as Error).message }, { status: 400 });
   }
 };
+
+export const rescheduleTicket = async (req: NextRequest) => {
+  const correlationId = getCorrelationId(req);
+  const logger = getLogger().child({ correlationId });
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    const body = await req.json();
+
+    const ticket = await Ticket.findById(id);
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    ticket.timeAvailability = body.timeAvailability;
+    await ticket.save();
+
+    return NextResponse.json(ticket, { status: 200 });
+  } catch (error) {
+    logger.error('Error rescheduling ticket:', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+  }
+};
+
+export const conditionalDeleteTicket = async (req: NextRequest) => {
+  const correlationId = getCorrelationId(req);
+  const logger = getLogger().child({ correlationId });
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    const ticket = await Ticket.findById(id);
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    if (ticket.assignedTo && ticket.assignedTo !== 'Unassigned') {
+      return NextResponse.json({ error: 'Cannot delete assigned ticket' }, { status: 400 });
+    }
+
+    await ticket.deleteOne();
+    return NextResponse.json({ message: 'Ticket deleted successfully' }, { status: 200 });
+  } catch (error) {
+    logger.error('Error deleting ticket:', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+  }
+};

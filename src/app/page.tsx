@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
 import { getLogger } from '@/lib/logger';
 import { Autocomplete } from '@react-google-maps/api';
+import { getCorrelationId } from '@/utils/helpers';
+import { useState, useRef, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import ReCAPTCHA from 'react-google-recaptcha';
 import MaskedInput from 'react-text-mask';
-import { getCorrelationId } from '@/utils/helpers';
+import createEmailMask from 'text-mask-addons/dist/emailMask';
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -153,14 +154,14 @@ export default function Home() {
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Email</label>
-          <input
-            type="email"
-            name="email"
+          <MaskedInput
+            mask={createEmailMask()}
             value={formData.email}
             onChange={handleInputChange}
             placeholder="Your Primary Email Address"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
+            name="email"
           />
         </div>
         <div className="mb-4">
@@ -168,13 +169,29 @@ export default function Home() {
           <div className="flex items-center">
             <span className="mr-2 border p-2 rounded">+1</span>
             <MaskedInput
-              mask={['(', /[1-9]/, /\d/, /\d/, ')', /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/, /\d/]}
+              mask={[
+                '(',
+                /[2-9]/, // First digit of area code must be 2-9
+                /\d/,    // Second digit of area code
+                /\d/,    // Third digit of area code
+                ')',
+                /\d/,    // First digit of exchange code
+                /\d/,    // Second digit of exchange code
+                /\d/,    // Third digit of exchange code
+                '-',
+                /\d/,    // First digit of line number
+                /\d/,    // Second digit of line number
+                /\d/,    // Third digit of line number
+                /\d/     // Fourth digit of line number
+              ]}
               value={formData.phoneNumber}
               onChange={handleInputChange}
               placeholder="Message and data rates may apply"
               className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
               required
               name="phoneNumber"
+              inputMode="numeric"
+              pattern="[0-9]*"
             />
           </div>
         </div>

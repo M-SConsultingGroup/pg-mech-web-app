@@ -1,6 +1,6 @@
 "use client";
 import { useAuth } from '@/context/AuthContext';
-import { ITicket, Priority } from '@/common/interfaces';
+import { ITicket, Priority, priorityMap } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import PriorityModal from '@/components/PriorityModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
@@ -17,15 +17,13 @@ export default function Tickets() {
   const [tickets, setTickets] = useState<ITicket[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string | null>('priority');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>(isAdmin ? 'New' : 'Open');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
   const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [popupVisible, setPopupVisible] = useState(false);
   const [selectedPhoneNumber, setSelectedPhoneNumber] = useState('');
   const [selectedServiceAddress, setSelectedServiceAddress] = useState('');
@@ -74,7 +72,7 @@ export default function Tickets() {
     setPopupVisible(true);
 
     try {
-      const eta = await calculateETA(serviceAddress);
+      const eta = await calculateETA(selectedServiceAddress);
       if (eta === '') {
         setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.`);
         return;
@@ -92,14 +90,22 @@ export default function Tickets() {
     setSelectedServiceAddress('');
   };
 
-  const calculateETA = async (destination: string) => {
-    const loader = new Loader({
-      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-      version: 'weekly',
-    });
+  let googleMapsLoader: Loader | null = null;
+  let googleMaps: any = null;
 
-    const google = await loader.load();
-    const directionsService = new google.maps.DirectionsService();
+  const initializeGoogleMaps = async () => {
+    if (!googleMapsLoader) {
+      googleMapsLoader = new Loader({
+        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+        version: 'weekly',
+      });
+      googleMaps = await googleMapsLoader.load();
+    }
+  };
+
+  const calculateETA = async (destination: string) => {
+    await initializeGoogleMaps();
+    const directionsService = new googleMaps.maps.DirectionsService();
 
     return new Promise<string>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(async (position) => {
@@ -110,12 +116,10 @@ export default function Tickets() {
           travelMode: google.maps.TravelMode.DRIVING,
         };
 
-        directionsService.route(request, (result, status) => {
+        directionsService.route(request, (result: google.maps.DirectionsResult, status: google.maps.DirectionsStatus) => {
           if (status === google.maps.DirectionsStatus.OK) {
             const eta = result && result.routes[0] && result.routes[0].legs[0] && result.routes[0].legs[0].duration ? result.routes[0].legs[0].duration.text : '';
             resolve(eta);
-          } else {
-            reject('Failed to calculate ETA');
           }
         });
       });
@@ -173,10 +177,8 @@ export default function Tickets() {
     }
   };
 
-  const openPriorityModal = (ticketId: string, user: string): Promise<Priority | null> => {
+  const openPriorityModal = (): Promise<Priority | null> => {
     return new Promise((resolve) => {
-      setCurrentTicketId(ticketId);
-      setCurrentUser(user);
       setIsModalOpen(true);
 
       const handleSelectPriority = (priority: Priority) => {
@@ -206,7 +208,7 @@ export default function Tickets() {
     let priority = '';
     if (currentStatus === 'New' && selectedUser !== 'Unassigned') {
       status = 'Open';
-      const selectedPriority = await openPriorityModal(ticketId, selectedUser);
+      const selectedPriority = await openPriorityModal();
       if (selectedPriority) {
         priority = selectedPriority;
       } else {
@@ -278,6 +280,16 @@ export default function Tickets() {
       if (!sortField) return 0;
       const aValue = a[sortField as keyof ITicket];
       const bValue = b[sortField as keyof ITicket];
+
+
+      if (sortField === 'priority') {
+        const aPriority = priorityMap[a.priority as Priority] ?? 0;
+        const bPriority = priorityMap[b.priority as Priority] ?? 0;
+        if (aPriority < bPriority) return sortOrder === 'asc' ? -1 : 1;
+        if (aPriority > bPriority) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      }
+
       if (aValue !== undefined && bValue !== undefined) {
         if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
@@ -295,7 +307,7 @@ export default function Tickets() {
         <div className="w-full bg-white p-2 rounded-lg shadow-lg">
           <h1 className="text-2xl font-bold text-gray-800">Overview</h1>
           <div className="mt-1">
-            <p className="text-base  text-gray-800">Total New Tickets: <span className="font-bold text-gray-800">{tickets.filter(ticket => ticket.status === 'New').length}</span></p>
+            <p className="text-lg text-gray-800">Total New Tickets: <span className="font-bold text-gray-800">{tickets.filter(ticket => ticket.status === 'New').length}</span></p>
           </div>
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {users.map((user) => {
@@ -342,79 +354,83 @@ export default function Tickets() {
               ))}
             </select>
             {isAdmin && (
-              <select
-                value={assignedToFilter}
-                onChange={handleAssignedToFilterChange}
-                className="border p-1 rounded"
-              >
-                <option value="">All Users</option>
-                {users.map((user) => (
-                  <option key={user} value={user}>
-                    {user}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  value={assignedToFilter}
+                  onChange={handleAssignedToFilterChange}
+                  className="border p-1 rounded"
+                >
+                  <option value="">All Users</option>
+                  {users.map((user) => (
+                    <option key={user} value={user}>
+                      {user}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => handleSort('priority')}
+                  className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
+                >
+                  Sort by Priority
+                </button>
+                <button
+                  onClick={() => handleSort('name')}
+                  className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
+                >
+                  Sort by Name
+                </button>
+                <button
+                  onClick={() => handleSort('serviceAddress')}
+                  className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
+                >
+                  Sort by Address
+                </button>
+              </>
             )}
-            <button
-              onClick={() => handleSort('priority')}
-              className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
-            >
-              Sort by Priority
-            </button>
-            <button
-              onClick={() => handleSort('name')}
-              className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
-            >
-              Sort by Name
-            </button>
-            <button
-              onClick={() => handleSort('serviceAddress')}
-              className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
-            >
-              Sort by Address
-            </button>
           </div>
         </div>
         <div className="overflow-x-auto w-full">
           <table className="min border-collapse border border-gray-400 w-full">
             <thead>
               <tr>
-                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Ticket Number</th>
-                <th className="border border-gray-400 p-2 pr-4">Priority</th>
-                <th className="border border-gray-400 p-2 pr-4">Name</th>
-                <th className="border border-gray-400 p-2 pr-4">Service Address</th>
-                {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Email</th>}
-                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Phone Number</th>
-                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Work Order Description</th>
-                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Time Availability</th>
-                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Status</th>
-                {isAdmin && <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Assigned To</th>}
-                <th className="border border-gray-400 p-2 pr-4 hidden md:table-cell">Actions</th>
+                <th className="border border-gray-400 p-2 hidden md:table-cell">Ticket Number</th>
+                <th className="border border-gray-400 p-2">Priority</th>
+                <th className="border border-gray-400 p-2">Name</th>
+                <th className="border border-gray-400 p-2">Service Address</th>
+                {isAdmin && <th className="border border-gray-400 p-2 hidden md:table-cell">Email</th>}
+                <th className="border border-gray-400 p-2 hidden md:table-cell">Phone Number</th>
+                <th className="border border-gray-400 p-2 hidden md:table-cell">Work Order Description</th>
+                <th className="border border-gray-400 p-2 hidden md:table-cell">Time Availability</th>
+                <th className="border border-gray-400 p-2 hidden md:table-cell">Status</th>
+                {isAdmin && <th className="border border-gray-400 p-2 hidden md:table-cell">Assigned To</th>}
+                <th className="border border-gray-400 p-2 hidden md:table-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
               {displayedTickets.map((ticket: ITicket, index) => (
                 <React.Fragment key={ticket._id}>
                   <tr onClick={() => handleRowToggle(ticket._id!)}>
-                    <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.ticketNumber}</td>
-                    <td className="border border-gray-400 p-2">
+                    <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.ticketNumber}</td>
+                    {/* Priority */}<td className="border border-gray-400 p-2">
                       <div className="flex items-center justify-center">
-                        <span className={`inline-block w-6 h-6 rounded-full mr-2 outline-1 ${ticket.priority === '' ? 'outline-dashed': getPriorityColor(ticket.priority || '')}`}></span>
+                        <span className={`flex w-6 h-6 rounded-full mr-2 outline-1 items-center justify-center font-bold ${ticket.priority === '' ? 'outline-dashed' : getPriorityColor(ticket.priority || '')}`}>
+                          {priorityMap[ticket.priority || '']}
+                        </span>
                       </div>
                     </td>
-                    <td className="border border-gray-400 p-2 pr-4">{ticket.name}</td>
-                    {/* Service Address */}<td className="border border-gray-400 p-2 pr-4">
+                    <td className="border border-gray-400 p-2">{ticket.name}</td>
+                    {/* Service Address */}<td className="border border-gray-400 p-2">
                       <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.serviceAddress || '')}`}
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.serviceAddress)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline break-words whitespace-normal"
                       >
-                        {ticket.serviceAddress || ''}
+                        {ticket.serviceAddress}
                       </a>
                     </td>
-                    {isAdmin && <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.email}</td>}
-                    {/* Phone Number */}<td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
+                    {isAdmin && <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.email}</td>}
+                    {/* Phone Number */}<td className="border border-gray-400 p-2 hidden md:table-cell">
                       <button
                         onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)}
                         className="block border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100 whitespace-nowrap"
@@ -422,27 +438,26 @@ export default function Tickets() {
                         {ticket.phoneNumber.replace(/\s+/g, '') || ''}
                       </button>
                     </td>
-                    <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.workOrderDescription}</td>
-                    <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.timeAvailability}</td>
-                    <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">{ticket.status}</td>
-                    {/* Assigned To */}{isAdmin && (
-                      <td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
-                        <select
-                          value={assignedUsers[ticket._id!] || ticket.assignedTo || "Unassigned"}
-                          onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value, ticket.status, ticket?.priority || '')}
-                          className="border p-1 rounded"
-                        >
-                          <option value="Unassigned">Unassigned</option>
-                          {users.map((user) => (
-                            <option key={user} value={user}>
-                              {user}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                    <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.workOrderDescription}</td>
+                    <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.timeAvailability}</td>
+                    <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.status}</td>
+                    {/* Assigned To */}{isAdmin && (<td className="border border-gray-400 p-2 hidden md:table-cell">
+                      <select
+                        value={assignedUsers[ticket._id!] || ticket.assignedTo || "Unassigned"}
+                        onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value, ticket.status, ticket?.priority || '')}
+                        className="border p-1 rounded"
+                      >
+                        <option value="Unassigned">Unassigned</option>
+                        {users.map((user) => (
+                          <option key={user} value={user}>
+                            {user}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     )}
-                    {/* Actions */}<td className="border border-gray-400 p-2 pr-4 hidden md:table-cell">
-                      <div className="flex items-center space-x-1">
+                    {/* Actions */}<td className="border border-gray-400 p-2 hidden md:table-cell">
+                      <div className="flex flex-col items-center space-y-2">
                         <button
                           onClick={() => router.push(`/tickets/${ticket._id}`)}
                           className="bg-yellow-500 p-1 rounded flex items-center"
@@ -485,7 +500,13 @@ export default function Tickets() {
                             </select>
                           </div>
                         )}
-                        <div className="flex items-center space-x-4"><strong>Actions:</strong>
+                        {/* Actions */}<div className="flex flex-col items-start space-y-2"><strong>Actions:</strong>
+                          <button
+                            onClick={() => router.push(`/tickets/${ticket._id}`)}
+                            className="outline-2 outline p-1 rounded flex items-center"
+                          >
+                            <Image src="/play-button.svg" alt="Edit" width={20} height={20} />
+                          </button>
                           <button
                             onClick={() => router.push(`/tickets/${ticket._id}`)}
                             className="bg-yellow-500 p-1 rounded flex items-center"

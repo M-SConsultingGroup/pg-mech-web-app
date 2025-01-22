@@ -1,5 +1,5 @@
 import { Priority } from '@/common/interfaces';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Modal from 'react-modal';
 
 interface PriorityModalProps {
@@ -11,6 +11,12 @@ interface PriorityModalProps {
 const PriorityModal: React.FC<PriorityModalProps> = ({ isOpen, onRequestClose, onSelectPriority }) => {
   const [selectedPriority, setSelectedPriority] = useState<Priority>('Medium');
 
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedPriority('Medium');
+    }
+  }, [isOpen]);
+
   const handleSelect = () => {
     onSelectPriority(selectedPriority);
     onRequestClose();
@@ -21,7 +27,7 @@ const PriorityModal: React.FC<PriorityModalProps> = ({ isOpen, onRequestClose, o
       isOpen={isOpen}
       onRequestClose={onRequestClose}
       contentLabel="Select Priority"
-      className="fixed inset-0 flex items-center justify-center z-50"
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
       overlayClassName="fixed inset-0 bg-black bg-opacity-75"
     >
       <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">

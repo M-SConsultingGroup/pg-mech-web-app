@@ -43,3 +43,12 @@ export interface UserHours {
 }
 
 export type Priority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | '';
+
+export const priorityMap: { [key in Priority]: number | null } = {
+  'Highest': 1,
+  'High': 2,
+  'Medium': 3,
+  'Low': 4,
+  'Lowest': 5,
+  '': null
+};

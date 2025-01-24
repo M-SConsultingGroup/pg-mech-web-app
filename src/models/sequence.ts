@@ -8,7 +8,7 @@ interface ISequence extends Document {
 const sequenceSchema = new Schema<ISequence>({
   date: { type: String, required: true, unique: true },
   sequence: { type: Number, required: true },
-});
+}, { collection: 'sequences' });
 
 const Sequence = model<ISequence>('Sequence', sequenceSchema);
 

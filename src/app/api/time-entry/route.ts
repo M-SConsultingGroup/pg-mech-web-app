@@ -1,24 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server';
-import TimeEntry from '@/models/timeEntry';
+import { NextRequest } from 'next/server';
+import { TimeEntryController } from '@/controllers/TimeEntryController';
 import connectToDatabase from '@/lib/mongodb';
+import { Auth } from '@/utils/decorators';
 
-export async function POST(req: NextRequest) {
-  await connectToDatabase();
-  const { user, ticket, startTime, endTime } = await req.json();
+class TimeEntryHandler {
+  @Auth()
+  async GET(req: NextRequest) {
+    await connectToDatabase();
+    const res = await TimeEntryController.getTimeEntries(req);
+    return res;
+  }
 
-  const timeEntry = new TimeEntry({ user, ticket, startTime, endTime });
-  await timeEntry.save();
+  @Auth()
+  async POST(req: NextRequest) {
+    await connectToDatabase();
+    const res = await TimeEntryController.createTimeEntry(req);
+    return res;
+  }
 
-  return NextResponse.json({ message: 'Time entry logged successfully' }, { status: 201 });
+  @Auth()
+  async PUT(req: NextRequest) {
+    await connectToDatabase();
+    const res = await TimeEntryController.updateTimeEntry(req);
+    return res;
+  }
 }
 
-export async function GET(req: NextRequest) {
-  await connectToDatabase();
-  const { searchParams } = new URL(req.url);
-  const user = searchParams.get('user');
+const handler = new TimeEntryHandler();
 
-  const query = user ? { user } : {};
-  const timeEntries = await TimeEntry.find(query).populate('ticket');
-
-  return NextResponse.json(timeEntries, { status: 200 });
-}
+export const GET = handler.GET.bind(handler);
+export const POST = handler.POST.bind(handler);
+export const PUT = handler.PUT.bind(handler);

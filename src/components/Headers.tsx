@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Header() {
@@ -32,8 +33,7 @@ export default function Header() {
   return (
     <div className="bg-gradient-cycling flex justify-between items-center p-4 bg-gray-800 text-white">
       <header>
-        <img src="/logo.png" alt="Logo" className='w-16 h-16' onClick={() => router.push('/')}/>
-      </header>
+        <Image src="/logo.png" alt="Logo" width={64} height={64} className='w-16 h-16' onClick={() => router.push('/')} />      </header>
       <h1 className="text-3xl font-bold text-black">PG Mechanical</h1>
       <div className="relative" ref={dropdownRef}>
         {isLoggedIn ? (
@@ -64,6 +64,17 @@ export default function Header() {
                 className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
               >
                 Create User
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setDropdownOpen(false);
+                  router.push('/time-logs');
+                }}
+                className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+              >
+                Time Logs
               </button>
             )}
             {isAdmin && (

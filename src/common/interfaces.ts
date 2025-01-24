@@ -1,4 +1,4 @@
-export interface ITicket {
+export interface Ticket {
   _id?: string;
   ticketNumber: string;
   name: string;
@@ -22,7 +22,7 @@ export interface ITicket {
 
 export interface Parts {
   category: string;
-  parts:    string[];
+  parts: string[];
 }
 
 export interface User {
@@ -31,15 +31,25 @@ export interface User {
   is_admin: boolean;
 }
 
+export interface TimeRange {
+  startTime: Date;
+  endTime?: Date;
+}
+
 export interface TimeEntry {
   user: string;
-  ticket: { ticketNumber: string };
-  startTime: string;
-  endTime: string;
+  ticket: string;
+  timeRanges: TimeRange[];
+  week: number;
 }
 
 export interface UserHours {
-  [user: string]: number;
+  [user: string]: {
+    total: number;
+    weekly: {
+      [week: number]: number;
+    };
+  };
 }
 
 export type Priority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | '';
@@ -50,5 +60,5 @@ export const priorityMap: { [key in Priority]: number | null } = {
   'Medium': 3,
   'Low': 4,
   'Lowest': 5,
-  '': null
+  '': null,
 };

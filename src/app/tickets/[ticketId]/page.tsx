@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { ITicket } from '@/common/interfaces';
+import { Ticket } from '@/common/interfaces';
 import { getLogger } from '@/lib/logger';
 import { getCorrelationId } from '@/utils/helpers';
 import { TICKET_STATUSES } from '@/common/constants';
@@ -19,8 +19,8 @@ const TicketDetails = () => {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId;
-  const [ticket, setTicket] = useState<ITicket | null>(null);
-  const [editedTicket, setEditedTicket] = useState<Partial<ITicket>>({});
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [editedTicket, setEditedTicket] = useState<Partial<Ticket>>({});
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -68,7 +68,7 @@ const TicketDetails = () => {
             toast.error('Failed to fetch ticket details');
           }
         } catch (error) {
-          console.error('Error fetching data:', error);
+          logger.error('Error fetching data:', error);
         } finally {
           setLoading(false);
         }
@@ -143,7 +143,7 @@ const TicketDetails = () => {
         images: [...(editedTicket.images || []), ...base64Images],
       };
 
-      const response = await fetch(`/api/tickets?id=${ticketId}`, {
+      const ticketPromisse = fetch(`/api/tickets?id=${ticketId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -152,13 +152,31 @@ const TicketDetails = () => {
         body: JSON.stringify(updatedTicket),
       });
 
-      if (response.ok) {
+      let timeEntryPromise;
+      if (updatedTicket.status !== 'Open' && updatedTicket.status !== 'New') {
+        timeEntryPromise = fetch('/api/time-entry', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            ticket: ticket?.ticketNumber,
+            user: ticket?.assignedTo,
+            endTime: new Date(),
+          }),
+        });
+      }
+
+      const [ticketResponse, timeEntryResponse] = await Promise.all([ticketPromisse, timeEntryPromise]);
+
+      if (ticketResponse.ok) {
         setLoading(false);
         toast.success('Ticket updated successfully');
         router.push('/tickets');
       } else {
         toast.error('Failed to update ticket ... Try again later');
-        logger.error('Error saving ticket:', response);
+        logger.error('Error saving ticket:', ticketResponse);
       }
     } catch (error) {
       toast.error('Failed to update ticket ... Try again later');

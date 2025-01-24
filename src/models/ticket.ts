@@ -1,10 +1,10 @@
 import { Schema, model, Document } from 'mongoose';
-import { ITicket } from '@/common/interfaces';
+import { Ticket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 
-interface ITicketDocument extends Omit<ITicket, '_id'>, Document {}
+interface ITicket extends Omit<Ticket, '_id'>, Document { }
 
-const ticketSchema = new Schema<ITicketDocument>({
+const ticketSchema = new Schema<ITicket>({
   ticketNumber: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   email: { type: String, required: true },
@@ -23,8 +23,8 @@ const ticketSchema = new Schema<ITicketDocument>({
   amountPaid: { type: Number, default: 0 },
   images: [{ type: String, default: [] }],
   priority: { type: String, enum: ['', 'Highest', 'High', 'Medium', 'Low', 'Lowest'], default: '' },
-});
+}, { collection: 'tickets' });
 
-const Ticket = model<ITicketDocument>('Ticket', ticketSchema);
+const TicketModel = model<ITicket>('Ticket', ticketSchema);
 
-export default Ticket;
+export default TicketModel;

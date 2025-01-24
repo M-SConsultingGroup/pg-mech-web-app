@@ -22,7 +22,7 @@ export default function Reschedule() {
       router.push('/');
     }
     Modal.setAppElement('#table');
-  }, [ticketId]);
+  }, [ticketId, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -38,12 +38,12 @@ export default function Reschedule() {
     const logger = getLogger();
 
     try {
-      const response = await fetch(`/api/tickets/${ticketId}`, {
+      const response = await fetch(`/api/tickets`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ timeAvailability: newTimeAvailability })
+        body: JSON.stringify({ ticketId, timeAvailability: newTimeAvailability })
       });
       setLoading(false);
       if (response.ok) {

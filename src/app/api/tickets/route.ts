@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getTickets, createTicket, updateTicket, deleteTicket } from '@/controllers/TicketController';
+import { TicketController } from '@/controllers/TicketController';
 import connectToDatabase from '@/lib/mongodb';
 import { Auth } from '@/utils/decorators';
 
@@ -7,27 +7,39 @@ class TicketHandler {
   @Auth()
   async GET(req: NextRequest) {
     await connectToDatabase();
-    const res = await getTickets(req);
+    const res = await TicketController.getTickets(req);
     return res;
   }
 
   async POST(req: NextRequest) {
     await connectToDatabase();
-    const res = await createTicket(req);
+    const res = await TicketController.createTicket(req);
     return res;
   }
 
   @Auth()
   async PUT(req: NextRequest) {
     await connectToDatabase();
-    const res = await updateTicket(req);
+    const res = await TicketController.updateTicket(req);
     return res;
   }
 
   @Auth()
   async DELETE(req: NextRequest) {
     await connectToDatabase();
-    const res = await deleteTicket(req);
+    const res = await TicketController.deleteTicket(req);
+    return res;
+  }
+
+  async PATCH(req: NextRequest) {
+    await connectToDatabase();
+    const res = await TicketController.rescheduleTicket(req);
+    return res;
+  }
+
+  async DELETE_CONDITIONAL(req: NextRequest) {
+    await connectToDatabase();
+    const res = await TicketController.conditionalDeleteTicket(req);
     return res;
   }
 }
@@ -38,3 +50,5 @@ export const GET = handler.GET.bind(handler);
 export const POST = handler.POST.bind(handler);
 export const PUT = handler.PUT.bind(handler);
 export const DELETE = handler.DELETE.bind(handler);
+export const PATCH = handler.PATCH.bind(handler);
+export const DELETE_CONDITIONAL = handler.DELETE_CONDITIONAL.bind(handler);

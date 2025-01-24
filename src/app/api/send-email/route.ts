@@ -64,7 +64,6 @@ export async function POST(req: NextRequest) {
     await saveToSent(mailOptions); // Save the sent email to the "Sent" folder
     return NextResponse.json({ response: info, success: true }, { status: 200 });
   } catch (error) {
-    console.error('Error sending email:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

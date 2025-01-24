@@ -1,6 +1,6 @@
 "use client";
 import { useAuth } from '@/context/AuthContext';
-import { ITicket, Priority, priorityMap } from '@/common/interfaces';
+import { Ticket, Priority, priorityMap } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import PriorityModal from '@/components/PriorityModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
@@ -14,7 +14,7 @@ import React, { useState, useEffect } from 'react';
 export default function Tickets() {
   const router = useRouter();
   const { username, isAdmin } = useAuth();
-  const [tickets, setTickets] = useState<ITicket[]>([]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<string | null>('priority');
@@ -34,7 +34,6 @@ export default function Tickets() {
     Modal.setAppElement('#table');
     const token = localStorage.getItem('token');
     if (!token) {
-      console.log(token);
       router.push('/login');
       return;
     }
@@ -79,7 +78,6 @@ export default function Tickets() {
       }
       setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready,%20My%20ETA%20is%20${eta}`);
     } catch (error) {
-      console.error(error);
       setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.`);
     }
   };
@@ -99,13 +97,19 @@ export default function Tickets() {
         apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
         version: 'weekly',
       });
-      googleMaps = await googleMapsLoader.load();
+    }
+    if (!googleMaps) {
+      await googleMapsLoader.importLibrary('maps');
+      googleMaps = google.maps;
     }
   };
 
   const calculateETA = async (destination: string) => {
     await initializeGoogleMaps();
-    const directionsService = new googleMaps.maps.DirectionsService();
+    if (!googleMaps) {
+      throw new Error('Google Maps is not initialized');
+    }
+    const directionsService = new googleMaps.DirectionsService();
 
     return new Promise<string>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(async (position) => {
@@ -116,9 +120,9 @@ export default function Tickets() {
           travelMode: google.maps.TravelMode.DRIVING,
         };
 
-        directionsService.route(request, (result: google.maps.DirectionsResult, status: google.maps.DirectionsStatus) => {
-          if (status === google.maps.DirectionsStatus.OK) {
-            const eta = result && result.routes[0] && result.routes[0].legs[0] && result.routes[0].legs[0].duration ? result.routes[0].legs[0].duration.text : '';
+        directionsService.route(request, (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            const eta = result.routes[0] && result.routes[0].legs[0] && result.routes[0].legs[0].duration ? result.routes[0].legs[0].duration.text : '';
             resolve(eta);
           }
         });
@@ -172,6 +176,7 @@ export default function Tickets() {
 
     if (response.ok) {
       setTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
+      toast.success('Ticket deleted successfully');
     } else {
       toast.error('Failed to delete ticket');
     }
@@ -265,6 +270,46 @@ export default function Tickets() {
     }
   };
 
+  const handleStartClick = async (ticket: Ticket) => {
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('You must be logged in to start a ticket');
+      return;
+    }
+    if (!ticket.assignedTo || ticket.assignedTo === 'Unassigned') {
+      toast.error('No user assigned to ticket');
+      return;
+    }
+
+    const startTime = new Date().toISOString();
+
+    const timeEntryPromise = fetch('/api/time-entry', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        user: ticket.assignedTo,
+        ticket: ticket.ticketNumber,
+        startTime,
+        endTime: null,
+      }),
+    });
+
+    const etaPromise = calculateETA(ticket.serviceAddress);
+
+    const [response, smsHref] = await Promise.all([timeEntryPromise, etaPromise]);
+
+    if (response.ok) {
+      window.location.href = `sms:${ticket.phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.%20My%20ETA%20is%20${smsHref}`;
+    } else {
+      const errorData = await response.json();
+      toast.error(errorData.message);
+    }
+  };
+
   const filteredTickets = tickets
     .filter((ticket) =>
       ticket.name.toLowerCase().includes(filter.toLowerCase()) ||
@@ -278,8 +323,8 @@ export default function Tickets() {
     )
     .sort((a, b) => {
       if (!sortField) return 0;
-      const aValue = a[sortField as keyof ITicket];
-      const bValue = b[sortField as keyof ITicket];
+      const aValue = a[sortField as keyof Ticket];
+      const bValue = b[sortField as keyof Ticket];
 
 
       if (sortField === 'priority') {
@@ -407,7 +452,7 @@ export default function Tickets() {
               </tr>
             </thead>
             <tbody>
-              {displayedTickets.map((ticket: ITicket, index) => (
+              {displayedTickets.map((ticket: Ticket, index) => (
                 <React.Fragment key={ticket._id}>
                   <tr onClick={() => handleRowToggle(ticket._id!)}>
                     <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.ticketNumber}</td>
@@ -459,6 +504,12 @@ export default function Tickets() {
                     {/* Actions */}<td className="border border-gray-400 p-2 hidden md:table-cell">
                       <div className="flex flex-col items-center space-y-2">
                         <button
+                          onClick={() => handleStartClick(ticket)}
+                          className="outline-2 outline p-1 rounded flex items-center"
+                        >
+                          <Image src="/play-button.svg" alt="Edit" width={20} height={20} />
+                        </button>
+                        <button
                           onClick={() => router.push(`/tickets/${ticket._id}`)}
                           className="bg-yellow-500 p-1 rounded flex items-center"
                         >
@@ -500,31 +551,31 @@ export default function Tickets() {
                             </select>
                           </div>
                         )}
-                        {/* Actions */}<div className="flex flex-col items-start space-y-2"><strong>Actions:</strong>
+                        {/* Actions */}<div className="flex justify-center space-x-4 p-2">
                           <button
-                            onClick={() => router.push(`/tickets/${ticket._id}`)}
+                            onClick={() => handleStartClick(ticket)}
                             className="outline-2 outline p-1 rounded flex items-center"
                           >
-                            <Image src="/play-button.svg" alt="Edit" width={20} height={20} />
+                            <Image src="/play-button.svg" alt="Edit" width={35} height={0} />
                           </button>
                           <button
                             onClick={() => router.push(`/tickets/${ticket._id}`)}
                             className="bg-yellow-500 p-1 rounded flex items-center"
                           >
-                            <Image src="/edit-pen.svg" alt="Edit" width={20} height={20} />
+                            <Image src="/edit-pen.svg" alt="Edit" width={35} height={0} />
                           </button>
                           <button
                             onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)}
                             className="bg-gray-500 p-1 rounded flex items-center"
                           >
-                            <Image src="/phone-call.svg" alt="Edit" width={20} height={20} />
+                            <Image src="/phone-call.svg" alt="Edit" width={35} height={0} />
                           </button>
                           {isAdmin && (
                             <button
                               onClick={() => handleRowDelete(ticket._id || '')}
                               className="border border-gray-500 p-1 rounded flex items-center"
                             >
-                              <Image src="/trash-bin-red.svg" alt="Delete" width={20} height={20} />
+                              <Image src="/trash-bin-red.svg" alt="Delete" width={35} height={0} />
                             </button>
                           )}
                         </div>

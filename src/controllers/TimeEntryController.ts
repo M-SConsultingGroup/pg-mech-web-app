@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import TimeEntry from '@/models/timeEntry';
+import TimeEntryModel from '@/models/timeEntry';
 import connectToDatabase from '@/lib/mongodb';
 import { getWeekNumber } from '@/common/helperFunctions';
-import mongoose from 'mongoose';
+import { TimeEntry } from '@/common/interfaces';
 
 export class TimeEntryController {
     static async createTimeEntry(req: NextRequest) {
@@ -11,10 +11,10 @@ export class TimeEntryController {
 
         const week = getWeekNumber(new Date(startTime));
 
-        let timeEntry = await TimeEntry.findOne({ user, ticket });
+        let timeEntry = await TimeEntryModel.findOne({ user, ticket });
 
         if (!timeEntry) {
-            timeEntry = new TimeEntry({ user, ticket, timeRanges: [{ startTime }], week });
+            timeEntry = new TimeEntryModel({ user, ticket, timeRanges: [{ startTime }], week });
         } else {
             const existingOpenRange = timeEntry.timeRanges.find(range => !range.endTime);
             if (existingOpenRange) {
@@ -33,7 +33,7 @@ export class TimeEntryController {
         await connectToDatabase();
         const { user, ticket, endTime } = await req.json();
 
-        const timeEntry = await TimeEntry.findOne({ user, ticket });
+        const timeEntry = await TimeEntryModel.findOne({ user, ticket });
 
         if (!timeEntry) {
             return NextResponse.json({ message: 'No matching time entry found' }, { status: 404 });
@@ -57,13 +57,13 @@ export class TimeEntryController {
         const { searchParams } = new URL(req.url);
         const week = searchParams.get('week');
     
-        const query: any = {};
+        const query: Partial<TimeEntry> = {};
         if (week) {
             query.week = parseInt(week, 10);
         }
     
         try {
-            const timeEntries = await TimeEntry.find(query).populate('ticket');
+            const timeEntries = await TimeEntryModel.find(query).populate('ticket');
     
             return NextResponse.json(timeEntries, { status: 200 });
         } catch (error) {

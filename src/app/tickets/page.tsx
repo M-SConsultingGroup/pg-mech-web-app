@@ -27,6 +27,7 @@ export default function Tickets() {
   const [popupVisible, setPopupVisible] = useState(false);
   const [selectedPhoneNumber, setSelectedPhoneNumber] = useState('');
   const [selectedServiceAddress, setSelectedServiceAddress] = useState('');
+  const [loading, setLoading] = useState(false);
   const [modalHandlers, setModalHandlers] = useState<{ handleSelectPriority: (priority: Priority) => void, handleCloseModal: () => void } | null>(null);
 
   useEffect(() => {
@@ -259,20 +260,23 @@ export default function Tickets() {
   };
 
   const handleStartClick = async (ticket: Ticket) => {
-
+    setLoading(true);
     const token = localStorage.getItem('token');
     if (!token) {
       toast.error('You must be logged in to start a ticket');
+      setLoading(false);
       return;
     }
     if (!ticket.assignedTo || ticket.assignedTo === 'Unassigned') {
       toast.error('No user assigned to ticket');
+      setLoading(false);
       return;
     }
 
     const startTime = new Date().toISOString();
 
-    const timeEntryPromise = fetch('/api/time-entry', {
+    // Send the time entry request asynchronously
+    fetch('/api/time-entry', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -284,17 +288,24 @@ export default function Tickets() {
         startTime,
         endTime: null,
       }),
+    }).then(response => {
+      if (!response.ok) {
+        response.json().then(errorData => {
+          toast.error(errorData.message);
+        });
+      }
+    }).catch(error => {
+      toast.error('An error occurred while creating the time entry');
     });
 
-    const etaPromise = calculateETA(ticket.serviceAddress);
-
-    const [response, eta] = await Promise.all([timeEntryPromise, etaPromise]);
-
-    if (response.ok) {
-      window.location.href = `sms:${ticket.phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.%20My%20ETA%20is%20${eta}`;
-    } else {
-      const errorData = await response.json();
-      toast.error(errorData.message);
+    // Wait for the calculateETA function
+    try {
+      const eta = await calculateETA(ticket.serviceAddress);
+      setLoading(false);
+      window.location.href = `sms:${ticket.phoneNumber}?body=Hi,%20This%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.%20My%20ETA%20is%20${eta}`;
+    } catch (error) {
+      setLoading(false);
+      toast.error('An error occurred while calculating the ETA');
     }
   };
 
@@ -573,6 +584,11 @@ export default function Tickets() {
                 </React.Fragment>
               ))}
             </tbody>
+            {loading && (
+              <div className="loader-container">
+                <div className="loader"></div>
+              </div>
+            )}
           </table>
         </div>
         <PriorityModal

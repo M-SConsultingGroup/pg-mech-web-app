@@ -36,12 +36,6 @@ class TicketHandler {
     const res = await TicketController.rescheduleTicket(req);
     return res;
   }
-
-  async DELETE_CONDITIONAL(req: NextRequest) {
-    await connectToDatabase();
-    const res = await TicketController.conditionalDeleteTicket(req);
-    return res;
-  }
 }
 
 const handler = new TicketHandler();
@@ -51,4 +45,3 @@ export const POST = handler.POST.bind(handler);
 export const PUT = handler.PUT.bind(handler);
 export const DELETE = handler.DELETE.bind(handler);
 export const PATCH = handler.PATCH.bind(handler);
-export const DELETE_CONDITIONAL = handler.DELETE_CONDITIONAL.bind(handler);

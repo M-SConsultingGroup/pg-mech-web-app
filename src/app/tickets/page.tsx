@@ -27,7 +27,6 @@ export default function Tickets() {
   const [popupVisible, setPopupVisible] = useState(false);
   const [selectedPhoneNumber, setSelectedPhoneNumber] = useState('');
   const [selectedServiceAddress, setSelectedServiceAddress] = useState('');
-  const [smsHref, setSmsHref] = useState('');
   const [modalHandlers, setModalHandlers] = useState<{ handleSelectPriority: (priority: Priority) => void, handleCloseModal: () => void } | null>(null);
 
   useEffect(() => {
@@ -69,7 +68,6 @@ export default function Tickets() {
     setSelectedPhoneNumber(phoneNumber);
     setSelectedServiceAddress(serviceAddress);
     setPopupVisible(true);
-    setSmsHref(`sms:${phoneNumber}`);
   };
 
   const handleClosePopup = () => {
@@ -79,7 +77,7 @@ export default function Tickets() {
   };
 
   let googleMapsLoader: Loader | null = null;
-  let googleMaps: any = null;
+  let googleMaps: google.maps.Map | null = null;
 
   const initializeGoogleMaps = async () => {
     if (!googleMapsLoader) {
@@ -90,7 +88,7 @@ export default function Tickets() {
     }
     if (!googleMaps) {
       await googleMapsLoader.importLibrary('maps');
-      googleMaps = google.maps;
+      googleMaps = new google.maps.Map(document.createElement('div'));
     }
   };
 
@@ -99,7 +97,7 @@ export default function Tickets() {
     if (!googleMaps) {
       throw new Error('Google Maps is not initialized');
     }
-    const directionsService = new googleMaps.DirectionsService();
+    const directionsService = new google.maps.DirectionsService();
 
     return new Promise<string>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(async (position) => {

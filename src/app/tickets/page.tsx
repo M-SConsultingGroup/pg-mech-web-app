@@ -1,13 +1,12 @@
 "use client";
 import { useAuth } from '@/context/AuthContext';
-import { Ticket, Priority, priorityMap } from '@/common/interfaces';
+import { Ticket, Priority, priorityMap, ModalType } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
-import PriorityModal from '@/components/PriorityModal';
-import ConfirmationModal from '@/components/ConfirmationModal';
+import UnifiedModal from '@/components/UnifiedModal';
+import TicketActions from '@/components/TicketActions';
 import { useRouter } from 'next/navigation';
 import { Loader } from '@googlemaps/js-api-loader';
 import toast from 'react-hot-toast';
-import Image from 'next/image';
 import Modal from 'react-modal';
 import React, { useState, useEffect } from 'react';
 
@@ -23,12 +22,24 @@ export default function Tickets() {
   const [statusFilter, setStatusFilter] = useState<string>(isAdmin ? 'New' : 'Open');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
   const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [popupVisible, setPopupVisible] = useState(false);
-  const [selectedPhoneNumber, setSelectedPhoneNumber] = useState('');
-  const [selectedServiceAddress, setSelectedServiceAddress] = useState('');
   const [loading, setLoading] = useState(false);
-  const [modalHandlers, setModalHandlers] = useState<{ handleSelectPriority: (priority: Priority) => void, handleCloseModal: () => void } | null>(null);
+  const [currentTicket, setCurrentTicket] = useState<Ticket | null>(null);
+  const [modalProps, setModalProps] = useState<{
+    modalType: ModalType;
+    isOpen: boolean;
+    onSelectPriority?: (priority: Priority) => void;
+    onSaveNotes?: (notes: string) => void;
+    phoneNumber?: string;
+    onConfirm?: () => void;
+    message?: string;
+    onRequestClose?: () => void;
+  }>({
+    modalType: 'none',
+    isOpen: false,
+  });
+
+  let googleMapsLoader: Loader | null = null;
+  let googleMaps: google.maps.Map | null = null;
 
   useEffect(() => {
     Modal.setAppElement('#table');
@@ -65,20 +76,95 @@ export default function Tickets() {
     fetchData();
   }, [router]);
 
-  const handlePhoneClick = async (phoneNumber: string, serviceAddress: string) => {
-    setSelectedPhoneNumber(phoneNumber);
-    setSelectedServiceAddress(serviceAddress);
-    setPopupVisible(true);
-  };
-
   const handleClosePopup = () => {
-    setPopupVisible(false);
-    setSelectedPhoneNumber('');
-    setSelectedServiceAddress('');
+    setModalProps({
+      modalType: 'none',
+      isOpen: false,
+    });
   };
 
-  let googleMapsLoader: Loader | null = null;
-  let googleMaps: google.maps.Map | null = null;
+  const handlePhoneClick = async (phoneNumber: string) => {
+    setModalProps({
+      modalType: 'popup',
+      isOpen: true,
+      phoneNumber,
+      message: 'Do you want to call or text this number?',
+    });
+  };
+
+  const handleStopClick = (ticket: Ticket) => {
+    setCurrentTicket(ticket);
+    setModalProps({
+      modalType: 'notes',
+      isOpen: true,
+      message: 'Why do you want to stop this ticket?',
+      onSaveNotes: handleSaveNotes,
+    });
+  };
+
+  const handleSaveNotes = async (notes: string) => {
+    if (!currentTicket) return;
+
+    const authToken = localStorage.getItem('token');
+    if (!authToken) {
+      toast.error('You must be logged in to stop a ticket');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const updatedTicket = {
+        ...currentTicket,
+        inProgress: false,
+        additionalNotes: notes,
+      };
+
+      const ticketUpdatePromise = fetch(`/api/tickets?id=${currentTicket._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(updatedTicket),
+      });
+
+      const timeEntryUpdatePromise = fetch('/api/time-entry', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          ticket: currentTicket.ticketNumber,
+          user: currentTicket.assignedTo,
+          endTime: new Date(),
+        }),
+      });
+
+      const [ticketResponse, timeEntryResponse] = await Promise.all([ticketUpdatePromise, timeEntryUpdatePromise]);
+
+      if (ticketResponse.ok && timeEntryResponse.ok) {
+        setTickets((prev) =>
+          prev.map((ticket) =>
+            ticket._id === currentTicket._id ? updatedTicket : ticket
+          )
+        );
+        toast.success('Ticket updated successfully');
+      } else {
+        toast.error('Failed to update ticket');
+      }
+    } catch (error) {
+      toast.error('Failed to update ticket');
+    } finally {
+      setLoading(false);
+      setModalProps({
+        modalType: 'none',
+        isOpen: false,
+      });
+      setCurrentTicket(null);
+    }
+  };
 
   const initializeGoogleMaps = async () => {
     if (!googleMapsLoader) {
@@ -150,53 +236,61 @@ export default function Tickets() {
   };
 
   const handleRowDelete = async (ticketId: string) => {
-    const confirmed = window.confirm('Are you sure you want to delete this ticket?');
-    if (!confirmed) {
-      return;
-    }
+    setModalProps({
+      modalType: 'confirmation',
+      isOpen: true,
+      message: 'Are you sure you want to delete this ticket?',
+      onConfirm: async () => {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/tickets?id=${ticketId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(`/api/tickets?id=${ticketId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        if (response.ok) {
+          setTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
+          toast.success('Ticket deleted successfully');
+        } else {
+          toast.error('Failed to delete ticket');
+        }
+        setModalProps({
+          modalType: 'none',
+          isOpen: false,
+        });
+      },
     });
-
-    if (response.ok) {
-      setTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
-      toast.success('Ticket deleted successfully');
-    } else {
-      toast.error('Failed to delete ticket');
-    }
   };
 
   const openPriorityModal = (): Promise<Priority | null> => {
     return new Promise((resolve) => {
-      setIsModalOpen(true);
-
-      const handleSelectPriority = (priority: Priority) => {
-        resolve(priority);
-        setIsModalOpen(false);
-      };
-
       const handleCloseModal = () => {
         resolve(null);
-        setIsModalOpen(false);
+        setModalProps({
+          modalType: 'none',
+          isOpen: false,
+        });
       };
 
-      // Attach handlers to the modal
-      setModalHandlers({ handleSelectPriority, handleCloseModal });
+      setModalProps({
+        modalType: 'priority',
+        isOpen: true,
+        onSelectPriority: (priority: Priority) => {
+          resolve(priority);
+          setModalProps({
+            modalType: 'none',
+            isOpen: false,
+          });
+        },
+        message: 'Select a priority for this ticket',
+        onRequestClose: handleCloseModal,
+      });
     });
   };
 
   const handleAssignedUserChange = async (ticketId: string, selectedUser: string, currentStatus: string, currentPriority: string) => {
     const previousUser = assignedUsers[ticketId] || '';
-    setAssignedUsers((prev) => ({
-      ...prev,
-      [ticketId]: selectedUser,
-    }));
-
     const token = localStorage.getItem('token');
     let status = '';
     let priority = '';
@@ -209,6 +303,11 @@ export default function Tickets() {
         return;
       }
     }
+
+    setAssignedUsers((prev) => ({
+      ...prev,
+      [ticketId]: selectedUser,
+    }));
 
     const body = {
       ticketId,
@@ -274,6 +373,33 @@ export default function Tickets() {
     }
 
     const startTime = new Date().toISOString();
+
+    // Update the ticket to set inProgress to true
+    const updatedTicket = {
+      ...ticket,
+      inProgress: true,
+    };
+
+    const response = await fetch(`/api/tickets?id=${ticket._id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(updatedTicket),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      toast.error(errorData.message);
+      setLoading(false);
+      return;
+    }
+
+    // Update the local state with the updated ticket
+    setTickets((prev) =>
+      prev.map((t) => (t._id === ticket._id ? updatedTicket : t))
+    );
 
     // Send the time entry request asynchronously
     fetch('/api/time-entry', {
@@ -476,7 +602,7 @@ export default function Tickets() {
                     {isAdmin && <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.email}</td>}
                     {/* Phone Number */}<td className="border border-gray-400 p-2 hidden md:table-cell">
                       <button
-                        onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)}
+                        onClick={() => handlePhoneClick(ticket.phoneNumber)}
                         className="block border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100 whitespace-nowrap"
                       >
                         {ticket.phoneNumber.replace(/\s+/g, '') || ''}
@@ -500,28 +626,16 @@ export default function Tickets() {
                       </select>
                     </td>
                     )}
-                    {/* Actions */}<td className="border border-gray-400 p-2 hidden md:table-cell">
-                      <div className="flex flex-col items-center space-y-2">
-                        <button
-                          onClick={() => handleStartClick(ticket)}
-                          className="outline-2 outline p-1 rounded flex items-center"
-                        >
-                          <Image src="/play-button.svg" alt="Edit" width={20} height={20} />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/tickets/${ticket._id}`)}
-                          className="bg-yellow-500 p-1 rounded flex items-center"
-                        >
-                          <Image src="/edit-pen.svg" alt="Edit" width={20} height={20} />
-                        </button>
-                        {isAdmin && (
-                          <button
-                            onClick={() => handleRowDelete(ticket._id || '')}
-                            className="border border-gray-500 p-1 rounded flex items-center"
-                          >
-                            <Image src="/trash-bin-red.svg" alt="Delete" width={20} height={20} />
-                          </button>
-                        )}
+                    {/* Actions */}<td className="border justify-center border-gray-400 p-2 hidden md:table-cell">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <TicketActions
+                          ticket={ticket}
+                          isAdmin={isAdmin}
+                          handleStartClick={handleStartClick}
+                          handleStopClick={handleStopClick}
+                          handlePhoneClick={handlePhoneClick}
+                          handleRowDelete={handleRowDelete}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -550,33 +664,15 @@ export default function Tickets() {
                             </select>
                           </div>
                         )}
-                        {/* Actions */}<div className="flex justify-center space-x-4 p-2">
-                          <button
-                            onClick={() => handleStartClick(ticket)}
-                            className="outline-2 outline p-1 rounded flex items-center"
-                          >
-                            <Image src="/play-button.svg" alt="Edit" width={35} height={0} />
-                          </button>
-                          <button
-                            onClick={() => router.push(`/tickets/${ticket._id}`)}
-                            className="bg-yellow-500 p-1 rounded flex items-center"
-                          >
-                            <Image src="/edit-pen.svg" alt="Edit" width={35} height={0} />
-                          </button>
-                          <button
-                            onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)}
-                            className="bg-gray-500 p-1 rounded flex items-center"
-                          >
-                            <Image src="/phone-call.svg" alt="Edit" width={35} height={0} />
-                          </button>
-                          {isAdmin && (
-                            <button
-                              onClick={() => handleRowDelete(ticket._id || '')}
-                              className="border border-gray-500 p-1 rounded flex items-center"
-                            >
-                              <Image src="/trash-bin-red.svg" alt="Delete" width={35} height={0} />
-                            </button>
-                          )}
+                        {/* Actions */}<div className="flex items-center justify-center space-x-4 p-2">
+                          <TicketActions
+                            ticket={ticket}
+                            isAdmin={isAdmin}
+                            handleStartClick={handleStartClick}
+                            handleStopClick={handleSaveNotes}
+                            handlePhoneClick={handlePhoneClick}
+                            handleRowDelete={handleRowDelete}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -584,55 +680,23 @@ export default function Tickets() {
                 </React.Fragment>
               ))}
             </tbody>
-            {loading && (
-              <div className="loader-container">
-                <div className="loader"></div>
-              </div>
-            )}
           </table>
-        </div>
-        <PriorityModal
-          isOpen={isModalOpen}
-          onRequestClose={() => {
-            if (modalHandlers) {
-              modalHandlers.handleCloseModal();
-            }
-          }}
-          onSelectPriority={(priority) => {
-            if (modalHandlers) {
-              modalHandlers.handleSelectPriority(priority);
-            }
-          }}
-        />
-        {popupVisible && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-4 rounded shadow-lg">
-              <p className="mb-4">Would you like to call or text {selectedPhoneNumber}?</p>
-              <div className="flex space-x-4">
-                <a
-                  href={`tel:${selectedPhoneNumber}`}
-                  className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
-                  onClick={handleClosePopup}
-                >
-                  Call
-                </a>
-                <a
-                  href={`sms:${selectedPhoneNumber}`}
-                  className="bg-green-500 hover:bg-green-700 text-white p-2 rounded"
-                  onClick={handleClosePopup}
-                >
-                  Text
-                </a>
-                <button
-                  onClick={handleClosePopup}
-                  className="bg-gray-500 hover:bg-gray-700 text-white p-2 rounded"
-                >
-                  Cancel
-                </button>
-              </div>
+          {loading && (
+            <div className="loader-container">
+              <div className="loader"></div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        <UnifiedModal
+          isOpen={modalProps.isOpen}
+          modalType={modalProps.modalType}
+          onRequestClose={() => setModalProps({ modalType: 'none', isOpen: false })}
+          onSelectPriority={modalProps.onSelectPriority}
+          onSaveNotes={modalProps.onSaveNotes}
+          phoneNumber={modalProps.phoneNumber}
+          onConfirm={modalProps.onConfirm}
+          message={modalProps.message}
+        />
       </div>
     </div>
   );

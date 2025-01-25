@@ -155,7 +155,7 @@ export default function Home() {
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Email</label>
           <MaskedInput
-            mask={emailMask}
+            mask={[/\w/, /\w/, /\w/, '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*']}
             value={formData.email}
             onChange={handleInputChange}
             placeholder="Your Primary Email Address"

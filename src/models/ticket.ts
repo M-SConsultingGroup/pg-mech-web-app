@@ -13,6 +13,7 @@ const ticketSchema = new Schema<ITicket>({
   workOrderDescription: { type: String, required: true },
   timeAvailability: { type: String, required: true },
   status: { type: String, required: true, enum: TICKET_STATUSES, default: 'New' },
+  inProgress: { type: Boolean, required: true, default: false },
   assignedTo: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

@@ -3,14 +3,18 @@ import React, { useEffect, useState } from 'react';
 
 import { TimeEntry, UserHours } from '@/common/interfaces';
 import { getWeekNumber } from '@/common/helperFunctions';
-
+import { useRouter } from 'next/router';
 export default function UserHoursPage() {
   const [userHours, setUserHours] = useState<UserHours>({});
   const [showPastWeek, setShowPastWeek] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
+  const router = useRouter();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    if(!token) {
+      router.push('/tickets')
+    }
     const fetchTimeEntries = async (weekNumber: number) => {
       const response = await fetch(`/api/time-entry?week=${weekNumber}`, {
         headers: {
@@ -59,8 +63,6 @@ export default function UserHoursPage() {
     setShowPastWeek(!showPastWeek);
   };
 
-  const currentWeek = getWeekNumber(new Date());
-
   return (
     <div className="min-h-screen p-8 pb-20 flex flex-col items-center bg-gray-100">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">User Hours</h1>
@@ -80,7 +82,11 @@ export default function UserHoursPage() {
             <tr key={user}>
               <td className="border border-gray-400 p-2 pr-4">{user}</td>
               <td className="border border-gray-400 p-2 pr-4">
-                {showPastWeek ? hours.weekly[currentWeek - 1]?.toFixed(2) : hours.weekly[currentWeek]?.toFixed(2)}
+                {Object.entries(hours.weekly).map(([week, weeklyHours]) => (
+                  <div key={week}>
+                    Week {week}: {weeklyHours.toFixed(2)} hours
+                  </div>
+                ))}
               </td>
               <td className="border border-gray-400 p-2 pr-4">{hours.total.toFixed(2)}</td>
             </tr>

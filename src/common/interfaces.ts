@@ -8,6 +8,7 @@ export interface Ticket {
   workOrderDescription: string;
   timeAvailability: string;
   status: string;
+  inProgress: boolean;
   assignedTo?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -53,6 +54,8 @@ export interface UserHours {
 }
 
 export type Priority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | '';
+
+export type ModalType = 'none' | 'priority' | 'notes' | 'popup' | 'confirmation';
 
 export const priorityMap: { [key in Priority]: number | null } = {
   'Highest': 1,

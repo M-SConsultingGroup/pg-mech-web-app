@@ -69,17 +69,7 @@ export default function Tickets() {
     setSelectedPhoneNumber(phoneNumber);
     setSelectedServiceAddress(serviceAddress);
     setPopupVisible(true);
-
-    try {
-      const eta = await calculateETA(selectedServiceAddress);
-      if (eta === '') {
-        setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.`);
-        return;
-      }
-      setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready,%20My%20ETA%20is%20${eta}`);
-    } catch (error) {
-      setSmsHref(`sms:${phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.`);
-    }
+    setSmsHref(`sms:${phoneNumber}`);
   };
 
   const handleClosePopup = () => {
@@ -300,10 +290,10 @@ export default function Tickets() {
 
     const etaPromise = calculateETA(ticket.serviceAddress);
 
-    const [response, smsHref] = await Promise.all([timeEntryPromise, etaPromise]);
+    const [response, eta] = await Promise.all([timeEntryPromise, etaPromise]);
 
     if (response.ok) {
-      window.location.href = `sms:${ticket.phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.%20My%20ETA%20is%20${smsHref}`;
+      window.location.href = `sms:${ticket.phoneNumber}?body=Hi%20this%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.%20My%20ETA%20is%20${eta}`;
     } else {
       const errorData = await response.json();
       toast.error(errorData.message);

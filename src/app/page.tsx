@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import ReCAPTCHA from 'react-google-recaptcha';
 import MaskedInput from 'react-text-mask';
-import createEmailMask from 'text-mask-addons/dist/emailMask';
+import emailMask from 'text-mask-addons/dist/emailMask';
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -155,7 +155,7 @@ export default function Home() {
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Email</label>
           <MaskedInput
-            mask={createEmailMask()}
+            mask={emailMask}
             value={formData.email}
             onChange={handleInputChange}
             placeholder="Your Primary Email Address"

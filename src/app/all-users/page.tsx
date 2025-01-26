@@ -2,7 +2,7 @@
 import { User } from '@/common/interfaces';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import ConfirmationModal from '@/components/ConfirmationModal';
+import UnifiedModal from '@/components/UnifiedModal';
 
 export default function AllUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -148,8 +148,9 @@ export default function AllUsersPage() {
           </tbody>
         </table>
       </div>
-      <ConfirmationModal
+      <UnifiedModal
         isOpen={isModalOpen}
+        modalType="confirmation"
         onRequestClose={closeModal}
         onConfirm={confirmAction}
         message={modalMessage}

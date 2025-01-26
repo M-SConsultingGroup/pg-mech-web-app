@@ -669,7 +669,7 @@ export default function Tickets() {
                             ticket={ticket}
                             isAdmin={isAdmin}
                             handleStartClick={handleStartClick}
-                            handleStopClick={handleSaveNotes}
+                            handleStopClick={handleStopClick}
                             handlePhoneClick={handlePhoneClick}
                             handleRowDelete={handleRowDelete}
                           />

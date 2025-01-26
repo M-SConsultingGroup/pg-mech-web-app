@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import BaseModal from './BaseModal';
 import { ModalType, Priority } from '@/common/interfaces';
 import PriorityModal from './PriorityModal';
-import NotesModal from './StopNotesModal';
 
 interface UnifiedModalProps {
   isOpen: boolean;
@@ -78,7 +77,14 @@ const UnifiedModal: React.FC<UnifiedModalProps> = ({
         <PriorityModal onSelectPriority={onSelectPriority} />
       )}
       {modalType === 'notes' && onSaveNotes && (
-        <NotesModal notes={notes} setNotes={setNotes} />
+        <div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+            rows={4}
+          />
+        </div>
       )}
     </BaseModal>
   );

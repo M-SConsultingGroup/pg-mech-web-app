@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Modal from 'react-modal';
 import { getLogger } from '@/lib/logger';
-import ConfirmationModal from '@/components/ConfirmationModal';
+import UnifiedModal from '@/components/UnifiedModal';
 
 export default function Reschedule() {
   const router = useRouter();
@@ -128,7 +128,8 @@ export default function Reschedule() {
           </div>
         )}
       </form>
-      <ConfirmationModal
+      <UnifiedModal
+        modalType='confirmation'
         isOpen={isModalOpen}
         onRequestClose={() => setIsModalOpen(false)}
         onConfirm={handleCancel}

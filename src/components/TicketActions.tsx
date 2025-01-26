@@ -1,12 +1,13 @@
 import React from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { Ticket } from '@/common/interfaces';
 
 interface TicketActionsProps {
-  ticket: any;
+  ticket: Ticket;
   isAdmin: boolean;
-  handleStartClick: (ticket: any) => void;
-  handleStopClick: (ticket: any) => void;
+  handleStartClick: (ticket: Ticket) => void;
+  handleStopClick: (ticket: Ticket) => void;
   handlePhoneClick: (phoneNumber: string, serviceAddress: string) => void;
   handleRowDelete: (id: string) => void;
 }

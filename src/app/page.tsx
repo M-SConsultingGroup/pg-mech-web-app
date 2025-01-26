@@ -7,7 +7,6 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import ReCAPTCHA from 'react-google-recaptcha';
 import MaskedInput from 'react-text-mask';
-import emailMask from 'text-mask-addons/dist/emailMask';
 
 export default function Home() {
   const [formData, setFormData] = useState({

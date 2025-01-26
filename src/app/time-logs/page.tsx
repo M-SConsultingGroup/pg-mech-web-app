@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 
 import { TimeEntry, UserHours } from '@/common/interfaces';
 import { getWeekNumber } from '@/common/helperFunctions';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
+
 export default function UserHoursPage() {
   const [userHours, setUserHours] = useState<UserHours>({});
   const [showPastWeek, setShowPastWeek] = useState(false);

@@ -12,10 +12,6 @@ const PriorityModal: React.FC<PriorityModalProps> = ({ onSelectPriority }) => {
     setSelectedPriority('Medium');
   }, []);
 
-  const handleSelect = () => {
-    onSelectPriority(selectedPriority);
-  };
-
   return (
     <div className="space-y-2">
       {['Highest', 'High', 'Medium', 'Low', 'Lowest'].map((priority) => (

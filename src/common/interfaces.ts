@@ -1,5 +1,5 @@
 export interface Ticket {
-  _id?: string;
+  _id: string;
   ticketNumber: string;
   name: string;
   email: string;

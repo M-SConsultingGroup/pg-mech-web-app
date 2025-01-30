@@ -16,14 +16,13 @@ export default function Tickets() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<string | null>('priority');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<string | null>(isAdmin ? 'createdAt' : 'priority');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(isAdmin ? 'desc' : 'asc');
   const [filter, setFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>(isAdmin ? 'New' : 'Open');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
   const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
-  const [currentTicket, setCurrentTicket] = useState<Ticket | null>(null);
   const [modalProps, setModalProps] = useState<{
     modalType: ModalType;
     isOpen: boolean;
@@ -76,13 +75,6 @@ export default function Tickets() {
     fetchData();
   }, [router]);
 
-  const handleClosePopup = () => {
-    setModalProps({
-      modalType: 'none',
-      isOpen: false,
-    });
-  };
-
   const handlePhoneClick = async (phoneNumber: string) => {
     setModalProps({
       modalType: 'popup',
@@ -93,17 +85,16 @@ export default function Tickets() {
   };
 
   const handleStopClick = (ticket: Ticket) => {
-    setCurrentTicket(ticket);
     setModalProps({
       modalType: 'notes',
       isOpen: true,
       message: 'Why do you want to stop this ticket?',
-      onSaveNotes: handleSaveNotes,
+      onSaveNotes: (notes: string) => handleSaveNotes(notes, ticket),
     });
   };
 
-  const handleSaveNotes = async (notes: string) => {
-    if (!currentTicket) return;
+  const handleSaveNotes = async (notes: string, ticket: Ticket) => {
+    if (!ticket) return;
 
     const authToken = localStorage.getItem('token');
     if (!authToken) {
@@ -115,12 +106,12 @@ export default function Tickets() {
 
     try {
       const updatedTicket = {
-        ...currentTicket,
+        ...ticket,
         inProgress: false,
         additionalNotes: notes,
       };
 
-      const ticketUpdatePromise = fetch(`/api/tickets?id=${currentTicket._id}`, {
+      const ticketUpdatePromise = fetch(`/api/tickets?id=${ticket._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -136,8 +127,8 @@ export default function Tickets() {
           'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          ticket: currentTicket.ticketNumber,
-          user: currentTicket.assignedTo,
+          ticket: ticket.ticketNumber,
+          user: ticket.assignedTo,
           endTime: new Date(),
         }),
       });
@@ -146,8 +137,8 @@ export default function Tickets() {
 
       if (ticketResponse.ok && timeEntryResponse.ok) {
         setTickets((prev) =>
-          prev.map((ticket) =>
-            ticket._id === currentTicket._id ? updatedTicket : ticket
+          prev.map((a) =>
+            a._id === ticket._id ? updatedTicket : a
           )
         );
         toast.success('Ticket updated successfully');
@@ -162,7 +153,6 @@ export default function Tickets() {
         modalType: 'none',
         isOpen: false,
       });
-      setCurrentTicket(null);
     }
   };
 
@@ -235,14 +225,17 @@ export default function Tickets() {
     setAssignedToFilter(e.target.value);
   };
 
-  const handleRowDelete = async (ticketId: string) => {
+  const handleRowDelete = async (ticket: Ticket) => {
+    const message = ticket.inProgress ? `This ticket is in-progress by ${ticket.assignedTo}, are you sure? `
+      : 'Are you sure you want to delete this ticket?';
+    console.log(message);
     setModalProps({
       modalType: 'confirmation',
       isOpen: true,
-      message: 'Are you sure you want to delete this ticket?',
+      message: message,
       onConfirm: async () => {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/tickets?id=${ticketId}`, {
+        const response = await fetch(`/api/tickets?id=${ticket._id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -250,7 +243,7 @@ export default function Tickets() {
         });
 
         if (response.ok) {
-          setTickets((prev) => prev.filter((ticket) => ticket._id !== ticketId));
+          setTickets((prev) => prev.filter((a) => a._id !== ticket._id));
           toast.success('Ticket deleted successfully');
         } else {
           toast.error('Failed to delete ticket');
@@ -263,10 +256,10 @@ export default function Tickets() {
     });
   };
 
-  const openPriorityModal = (): Promise<Priority | null> => {
+  const openPriorityModal = (): Promise<Priority> => {
     return new Promise((resolve) => {
       const handleCloseModal = () => {
-        resolve(null);
+        resolve('');
         setModalProps({
           modalType: 'none',
           isOpen: false,
@@ -289,33 +282,33 @@ export default function Tickets() {
     });
   };
 
-  const handleAssignedUserChange = async (ticketId: string, selectedUser: string, currentStatus: string, currentPriority: string) => {
-    const previousUser = assignedUsers[ticketId] || '';
+  const handleAssignedUserChange = async (ticket: Ticket, selectedUser: string) => {
+    const previousUser = assignedUsers[ticket._id];
     const token = localStorage.getItem('token');
     let status = '';
-    let priority = '';
-    if (currentStatus === 'New' && selectedUser !== 'Unassigned') {
+    let selectedPriority = '';
+
+    if (ticket.status === 'New' && selectedUser !== 'Unassigned') {
       status = 'Open';
-      const selectedPriority = await openPriorityModal();
-      if (selectedPriority) {
-        priority = selectedPriority;
-      } else {
+      selectedPriority = await openPriorityModal();
+      if (selectedPriority === '') {
         return;
       }
     }
 
     setAssignedUsers((prev) => ({
       ...prev,
-      [ticketId]: selectedUser,
+      [ticket._id]: selectedUser,
     }));
 
     const body = {
-      ticketId,
+      ticketId: ticket._id,
       assignedTo: selectedUser,
-      priority: priority === '' ? currentPriority : priority,
-      status: status === '' ? currentStatus : status
+      priority: selectedPriority === '' ? ticket.priority : selectedPriority,
+      status: status === '' ? ticket.status : status
     };
-    const response = await fetch(`/api/tickets?id=${ticketId}`, {
+
+    const response = await fetch(`/api/tickets?id=${ticket._id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -327,15 +320,15 @@ export default function Tickets() {
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
-        prev.map((ticket) =>
-          ticket._id === ticketId ? updatedTicket : ticket
+        prev.map((currentTicket) =>
+          currentTicket._id === ticket._id ? updatedTicket : currentTicket
         )
       );
       toast.success('Ticket updated successfully');
     } else {
       setAssignedUsers((prev) => ({
         ...prev,
-        [ticketId]: previousUser,
+        [ticket._id]: previousUser,
       }));
       toast.error('Failed to update ticket');
     }
@@ -475,11 +468,11 @@ export default function Tickets() {
     <div id="table" className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">
       {/* Overview */}{isAdmin && (
         <div className="w-full bg-white p-2 rounded-lg shadow-lg">
-          <h1 className="text-2xl font-bold text-gray-800">Overview</h1>
-          <div className="mt-1">
-            <p className="text-lg text-gray-800">Total New Tickets: <span className="font-bold text-gray-800">{tickets.filter(ticket => ticket.status === 'New').length}</span></p>
-          </div>
           <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            <h1 className="text-3xl font-bold text-gray-800 text-center">Overview</h1>
+            <div className="mt-1 p-1 rounded-lg shadow-md bg-gray-100">
+              <p className="text-lg text-gray-800">Total New Tickets: <span className="font-bold text-gray-800">{tickets.filter(ticket => ticket.status === 'New').length}</span></p>
+            </div>
             {users.map((user) => {
               const userTickets = tickets.filter((ticket) => ticket.assignedTo === user);
               const totalTickets = userTickets.length;
@@ -577,13 +570,13 @@ export default function Tickets() {
               </tr>
             </thead>
             <tbody>
-              {displayedTickets.map((ticket: Ticket, index) => (
+              {displayedTickets.map((ticket: Ticket) => (
                 <React.Fragment key={ticket._id}>
                   <tr onClick={() => handleRowToggle(ticket._id!)}>
                     <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.ticketNumber}</td>
                     {/* Priority */}<td className="border border-gray-400 p-2">
                       <div className="flex items-center justify-center">
-                        <span className={`flex w-6 h-6 rounded-full mr-2 outline-1 items-center justify-center font-bold ${ticket.priority === '' ? 'outline-dashed' : getPriorityColor(ticket.priority || '')}`}>
+                        <span className={`flex w-6 h-6 rounded-full mr-2 outline-1 justify-center font-bold ${ticket.priority === '' ? 'outline-dashed' : getPriorityColor(ticket.priority || '')}`}>
                           {priorityMap[ticket.priority || '']}
                         </span>
                       </div>
@@ -614,7 +607,7 @@ export default function Tickets() {
                     {/* Assigned To */}{isAdmin && (<td className="border border-gray-400 p-2 hidden md:table-cell">
                       <select
                         value={assignedUsers[ticket._id!] || ticket.assignedTo || "Unassigned"}
-                        onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value, ticket.status, ticket?.priority || '')}
+                        onChange={(e) => handleAssignedUserChange(ticket, e.target.value)}
                         className="border p-1 rounded"
                       >
                         <option value="Unassigned">Unassigned</option>
@@ -641,18 +634,20 @@ export default function Tickets() {
                   </tr>
                   {/* Hidden rows */}{expandedRows.has(ticket._id!) && (
                     <tr className="md:hidden">
-                      <td colSpan={3} className="border border-gray-400 space-y-1">
+                      <td colSpan={3} className="border border-gray-400 space-y-1 p-2">
+                        <div><strong>Ticket Number:</strong> {ticket.ticketNumber}</div>
                         <div><strong>Email:</strong> {ticket.email}</div>
                         <div><strong>Phone Number:</strong> {ticket.phoneNumber}</div>
                         <div><strong>Work Order Description:</strong> {ticket.workOrderDescription}</div>
                         <div><strong>Time Availability:</strong> {ticket.timeAvailability}</div>
                         <div><strong>Status:</strong> {ticket.status}</div>
+                        <div><strong>Notes:</strong> {ticket.additionalNotes}</div>
                         {/* Assigned To */} {isAdmin && (
                           <div>
                             <strong>Assigned To:</strong>
                             <select
                               value={assignedUsers[ticket._id!] || ticket.assignedTo || 'Unassigned'}
-                              onChange={(e) => handleAssignedUserChange(ticket._id!, e.target.value, ticket.status, ticket?.priority || '')}
+                              onChange={(e) => handleAssignedUserChange(ticket, e.target.value)}
                               className="border p-1 rounded"
                             >
                               <option value="Unassigned">Unassigned</option>

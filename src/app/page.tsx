@@ -4,11 +4,13 @@ import { getLogger } from '@/lib/logger';
 import { Autocomplete } from '@react-google-maps/api';
 import { getCorrelationId } from '@/utils/helpers';
 import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import ReCAPTCHA from 'react-google-recaptcha';
 import MaskedInput from 'react-text-mask';
 
 export default function Home() {
+  const pathname = usePathname();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,13 +23,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [disclaimer, setDisclaimer] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const [recaptchaKey, setRecaptchaKey] = useState<string>('');
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA | null>(null);
-
-  useEffect(() => {
-    setRecaptchaKey(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '');
-  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
@@ -36,6 +33,11 @@ export default function Home() {
       [name]: value
     }));
   };
+
+  useEffect(() => {
+    // Reset ReCAPTCHA when route changes
+    recaptchaRef.current?.reset();
+  }, [pathname]);
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -48,7 +50,12 @@ export default function Home() {
   };
 
   const handleRecaptchaChange = (token: string | null) => {
-    setRecaptchaToken(token);
+    if (!token) {
+      setRecaptchaToken(null);
+      recaptchaRef.current?.reset(); // Reset ReCAPTCHA if token is null
+    } else {
+      setRecaptchaToken(token);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -257,7 +264,7 @@ export default function Home() {
         <div className="mb-4">
           <ReCAPTCHA
             ref={recaptchaRef}
-            sitekey={recaptchaKey}
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
             onChange={handleRecaptchaChange}
           />
         </div>

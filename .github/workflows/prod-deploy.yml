@@ -25,4 +25,4 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Deploy to Prod
         run: |
-          ssh user@${{ secrets.VPS_IP }} 'cd ~/pg-mech-app && git pull && docker-compose up -d --build'
+          ssh root@${{ secrets.VPS_IP }} 'cd ~/pg-mech-app && git pull && docker-compose up -d --build'

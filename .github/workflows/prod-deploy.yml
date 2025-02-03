@@ -57,7 +57,7 @@ jobs:
         port: 22
         script: |
           # Copy the tarball to the correct directory on the VPS
-          scp pg-mech-app.tar root@${{ secrets.VPS_IP }}:~/pg-mech-app/
+          scp -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} pg-mech-app.tar root@${{ secrets.VPS_IP }}:~/pg-mech-app/
 
           # Load the tarball on the VPS
           sudo docker load -i ~/pg-mech-app/pg-mech-app.tar

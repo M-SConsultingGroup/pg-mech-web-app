@@ -7,7 +7,7 @@ interface ExtendedNextRequest extends NextRequest {
 
 export async function authMiddleware(req: ExtendedNextRequest) {
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+  const JWT_SECRET = process.env.JWT_SECRET || '';
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
     return NextResponse.json({ error: 'No token provided' }, { status: 401 });

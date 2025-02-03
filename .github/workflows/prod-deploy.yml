@@ -24,17 +24,36 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-buildx-
 
+    - name: Build Docker image
+      run: |
+        sudo docker build -t pg-mech-app:latest .
+
+    - name: Save Docker image as tarball
+      run: |
+        sudo docker save -o pg-mech-app.tar pg-mech-app:latest
+
+    - name: Upload tarball as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: pg-mech-app-tar
+        path: pg-mech-app.tar
+
     - name: Deploy to VPS via SSH
       uses: appleboy/ssh-action@v0.1.5
       with:
         host: ${{ secrets.VPS_IP }}
         username: root
         key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
         script: |
-          cd ~/pg-mech-app
-          git pull
-          sudo docker build -t pg-mech-app:latest .
-          sudo docker stack deploy -c docker-stack.yml pg-mech-app
+          # Copy the tarball to the VPS
+          scp pg-mech-app.tar root@${{ secrets.VPS_IP }}:/root/
+
+          # Load the tarball on the VPS
+          sudo docker load -i /root/pg-mech-app.tar
+
+          # Deploy the stack
+          sudo docker stack deploy -c /root/docker-stack.yml pg-mech-app
       env:
         MONGODB_URI: ${{ secrets.MONGODB_URI }}
         JWT_SECRET: ${{ secrets.JWT_SECRET }}

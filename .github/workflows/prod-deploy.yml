@@ -19,7 +19,7 @@ jobs:
 
     - name: Deploy to Docker Swarm
       run: |
-        ssh root@${{ secrets.VPS_IP }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no root@${{ secrets.VPS_IP }} << 'EOF'
           cd ~/pg-mech-app
           git pull
           docker stack deploy -c docker-stack.yml pg-mech-app

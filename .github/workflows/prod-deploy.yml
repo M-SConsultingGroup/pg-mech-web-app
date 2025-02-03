@@ -6,23 +6,30 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Prod
     runs-on: ubuntu-latest
-    env:
-      ENV_NAME: prod
-      MONGODB_URI: ${{ secrets.MONGODB_URI }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
-      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
-      NEXT_PUBLIC_SITE_NAME: ${{ secrets.NEXT_PUBLIC_SITE_NAME }}
-      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-      VPS_IP: ${{ secrets.VPS_IP }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-      - name: Deploy to Prod
+
+      - name: Add SSH host key to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
         run: |
           ssh root@${{ secrets.VPS_IP }} 'cd ~/pg-mech-app && git pull && docker-compose up -d --build'
+        env:
+          ENV_NAME: prod
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+          NEXT_PUBLIC_SITE_NAME: ${{ secrets.NEXT_PUBLIC_SITE_NAME }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          VPS_IP: ${{ secrets.VPS_IP }}

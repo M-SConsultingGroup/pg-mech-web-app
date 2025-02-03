@@ -6,46 +6,16 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout the code
-      uses: actions/checkout@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Cache Docker layers
-      uses: actions/cache@v2
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
-
-    - name: Build Docker image
-      run: |
-        sudo docker build -t pg-mech-app:latest .
-
-    - name: Save Docker image as tarball
-      run: |
-        sudo docker save -o pg-mech-app.tar pg-mech-app:latest
-
-    - name: Fix permissions for the tarball
-      run: |
-        sudo chmod 644 pg-mech-app.tar 
-
     - name: Set up SSH Key
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
-
-    - name: Copy tarball to VPS
-      run: |
-        scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa pg-mech-app.tar root@${{ secrets.VPS_IP }}:~/pg-mech-app/
 
     - name: Deploy to VPS via SSH
       uses: appleboy/ssh-action@v0.1.5
@@ -55,15 +25,25 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
         script: |
-          # Load the tarball on the VPS
-          sudo docker load -i ~/pg-mech-app/pg-mech-app.tar
+          # Navigate to the project directory
+          cd ~/pg-mech-app
 
-          # Deploy the stack (docker-stack.yml should already be in the repo on the VPS)
-          sudo docker stack deploy -c ~/pg-mech-app/docker-stack.yml pg-mech-app
-      env:
-        MONGODB_URI: ${{ secrets.MONGODB_URI }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
-        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
-        NEXT_PUBLIC_SITE_NAME: ${{ secrets.NEXT_PUBLIC_SITE_NAME }}
-        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          # Pull the latest changes
+          git pull origin main
+
+          # Create/update .env file
+          cat <<EOF > .env
+          MONGODB_URI=${{ secrets.MONGODB_CONN_STRING }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+          NEXT_PUBLIC_SITE_NAME=${{ secrets.NEXT_PUBLIC_SITE_NAME }}
+          EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
+          EOF
+
+          # Build the Docker image locally
+          sudo docker build -t pg-mech-app:latest .
+
+          # Deploy using Docker Compose
+          sudo docker-compose down
+          sudo docker-compose up -d --remove-orphans

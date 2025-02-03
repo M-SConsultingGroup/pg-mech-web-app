@@ -32,6 +32,10 @@ jobs:
       run: |
         sudo docker save -o pg-mech-app.tar pg-mech-app:latest
 
+    - name: Fix permissions for the tarball
+      run: |
+        sudo chmod 644 pg-mech-app.tar 
+
     - name: Upload tarball as artifact
       uses: actions/upload-artifact@v4
       with:

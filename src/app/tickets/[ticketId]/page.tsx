@@ -1,14 +1,15 @@
 'use client';
 
-import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { ITicket } from '@/common/interfaces';
-import { getLogger } from '@/lib/logger';
-import { getCorrelationId } from '@/utils/helpers';
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState, useMemo } from 'react';
+import { Ticket } from '@/common/interfaces';
+import { getLogger } from '@/lib/logger';
+import { getCorrelationId } from '@/utils/helpers';
 import { TICKET_STATUSES } from '@/common/constants';
+import partsData from '@/common/partslist.json';
 
 let logger = getLogger();
 const correlationId = getCorrelationId();
@@ -18,14 +19,29 @@ const TicketDetails = () => {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId;
-  const [ticket, setTicket] = useState<ITicket | null>(null);
-  const [editedTicket, setEditedTicket] = useState<Partial<ITicket>>({});
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [editedTicket, setEditedTicket] = useState<Partial<Ticket>>({});
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredParts, setFilteredParts] = useState<string[]>([]);
+  const [selectedParts, setSelectedParts] = useState<string[]>([]);
 
   const filteredStatuses = TICKET_STATUSES.filter(status => status !== 'New');
+
+  useEffect(() => {
+    if (searchQuery) {
+      const filtered = partsData.TotalParts.filter(part =>
+        part.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredParts(filtered);
+    } else {
+      setFilteredParts([]);
+    }
+  }, [searchQuery]);
+
   useEffect(() => {
     if (ticketId) {
       const fetchData = async () => {
@@ -52,7 +68,7 @@ const TicketDetails = () => {
             toast.error('Failed to fetch ticket details');
           }
         } catch (error) {
-          console.error('Error fetching data:', error);
+          logger.error('Error fetching data:', error);
         } finally {
           setLoading(false);
         }
@@ -123,11 +139,11 @@ const TicketDetails = () => {
 
       const updatedTicket = {
         ...editedTicket,
-        partsUsed: editedTicket.partsUsed?.map(part => part.trim()),
+        partsUsed: selectedParts,
         images: [...(editedTicket.images || []), ...base64Images],
       };
 
-      const response = await fetch(`/api/tickets?id=${ticketId}`, {
+      const ticketPromisse = fetch(`/api/tickets?id=${ticketId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -136,12 +152,31 @@ const TicketDetails = () => {
         body: JSON.stringify(updatedTicket),
       });
 
-      if (response.ok) {
+      let timeEntryPromise;
+      if (updatedTicket.status !== 'Open' && updatedTicket.status !== 'New') {
+        timeEntryPromise = fetch('/api/time-entry', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            ticket: ticket?.ticketNumber,
+            user: ticket?.assignedTo,
+            endTime: new Date(),
+          }),
+        });
+      }
+
+      const [ticketResponse, timeEntryResponse] = await Promise.all([ticketPromisse, timeEntryPromise]);
+
+      if (ticketResponse.ok) {
         setLoading(false);
         toast.success('Ticket updated successfully');
+        router.push('/tickets');
       } else {
         toast.error('Failed to update ticket ... Try again later');
-        logger.error('Error saving ticket:', response);
+        logger.error('Error saving ticket:', ticketResponse);
       }
     } catch (error) {
       toast.error('Failed to update ticket ... Try again later');
@@ -266,15 +301,45 @@ const TicketDetails = () => {
             disabled
           />
         </div>
-        <div className="mb-2">
+        {/* Parts */}<div className="mb-2">
           <label className="block mb-1 text-gray-700">Parts Used</label>
           <input
             type="text"
             name="partsUsed"
-            value={editedTicket.partsUsed?.join(', ') || ''}
-            onChange={handleInputChange}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            placeholder="Search for parts"
           />
+          {filteredParts.length > 0 && (
+            <ul className="border rounded mt-2 max-h-40 overflow-y-auto">
+              {filteredParts.map((part, index) => (
+                <li
+                  key={index}
+                  onClick={() => {
+                    setSelectedParts((prev) => [...prev, part]);
+                    setSearchQuery('');
+                    setFilteredParts([]);
+                  }}
+                  className="p-2 cursor-pointer hover:bg-gray-200"
+                >
+                  {part}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-2">
+            {ticket?.partsUsed && ticket?.partsUsed.length > 0 && ticket?.partsUsed.map((part, index) => (
+              <span key={index} className="inline-block bg-gray-200 p-1 m-1 rounded">
+                {part}
+              </span>
+            ))}
+            {selectedParts.map((part, index) => (
+              <span key={index} className="inline-block bg-gray-200 p-1 m-1 rounded">
+                {part}
+              </span>
+            ))}
+          </div>
         </div>
         <div className="mb-2">
           <label className="block mb-1 text-gray-700">Services Delivered</label>

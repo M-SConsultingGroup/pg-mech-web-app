@@ -20,7 +20,7 @@ class RegistrationHandler {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create a new user
-    const user = new User({ username, password: hashedPassword, isAdmin });
+    const user = new User({ username, password: hashedPassword, is_admin: isAdmin });
     await user.save();
 
     return NextResponse.json({ message: 'User created successfully' }, { status: 201 });

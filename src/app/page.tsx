@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
 import { getLogger } from '@/lib/logger';
 import { Autocomplete } from '@react-google-maps/api';
+import { getCorrelationId } from '@/utils/helpers';
+import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import ReCAPTCHA from 'react-google-recaptcha';
 import MaskedInput from 'react-text-mask';
-import { getCorrelationId } from '@/utils/helpers';
 
 export default function Home() {
+  const pathname = usePathname();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,13 +23,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [disclaimer, setDisclaimer] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const [recaptchaKey, setRecaptchaKey] = useState<string>('');
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA | null>(null);
-
-  useEffect(() => {
-    setRecaptchaKey(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '');
-  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
@@ -36,6 +33,11 @@ export default function Home() {
       [name]: value
     }));
   };
+
+  useEffect(() => {
+    // Reset ReCAPTCHA when route changes
+    recaptchaRef.current?.reset();
+  }, [pathname]);
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -48,7 +50,12 @@ export default function Home() {
   };
 
   const handleRecaptchaChange = (token: string | null) => {
-    setRecaptchaToken(token);
+    if (!token) {
+      setRecaptchaToken(null);
+      recaptchaRef.current?.reset(); // Reset ReCAPTCHA if token is null
+    } else {
+      setRecaptchaToken(token);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -81,30 +88,35 @@ export default function Home() {
       setLoading(false);
       if (response.ok) {
         const responseData = await response.json();
-        const ticketId = responseData.ticketId;
+        const ticketId = responseData._id;
 
         toast.success('Ticket submitted successfully', {
           className: 'text-xl'
         });
 
-        // Send text message with reschedule link
-        const rescheduleLink = `${window.location.origin}/reschedule?ticketId=${ticketId}`;
-        const smsResponse = await fetch('/api/send-sms', {
+        // Send email with reschedule link
+        const rescheduleLink = `${window.location.origin}/reschedule/${ticketId}`;
+        const emailResponse = await fetch('/api/send-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            phone: formData.phoneNumber,
-            message: `Hi ${formData.name}, Thank you for submitting a ticket. Our Technician will contact you soon. If you need to reschedule, please use the following link: ${rescheduleLink}`,
+            to: formData.email,
+            subject: 'Ticket Submission Confirmation',
+            message: `Hi ${formData.name},\n
+            Thank you for submitting a ticket. Our Technician will contact you soon. 
+            If you need to reschedule or cancel to avoid the tech visitation fee of $79, 
+            please use the following link: ${rescheduleLink}
+            \nBest regards,\nPG Mechanical Support`
           }),
         });
 
-        const smsData = await smsResponse.json();
-        if (smsData.success) {
-          logger.info('SMS sent successfully.');
+        const emailData = await emailResponse.json();
+        if (emailData.success) {
+          logger.info('Email sent successfully.');
         } else {
-          logger.error(`SMS sending failed: ${smsData.error}`);
+          logger.error(`Email sending failed: ${emailData.error}`);
         }
         setFormData({
           name: '',
@@ -148,14 +160,14 @@ export default function Home() {
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Email</label>
-          <input
-            type="email"
-            name="email"
+          <MaskedInput
+            mask={[/\w/, /\w/, /\w/, '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*']}
             value={formData.email}
             onChange={handleInputChange}
             placeholder="Your Primary Email Address"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
+            name="email"
           />
         </div>
         <div className="mb-4">
@@ -163,13 +175,29 @@ export default function Home() {
           <div className="flex items-center">
             <span className="mr-2 border p-2 rounded">+1</span>
             <MaskedInput
-              mask={['(', /[1-9]/, /\d/, /\d/, ')', ' ', /\d/, /\d/, /\d/, '-', /\d/, /\d/, /\d/, /\d/]}
+              mask={[
+                '(',
+                /[2-9]/, // First digit of area code must be 2-9
+                /\d/,    // Second digit of area code
+                /\d/,    // Third digit of area code
+                ')',
+                /\d/,    // First digit of exchange code
+                /\d/,    // Second digit of exchange code
+                /\d/,    // Third digit of exchange code
+                '-',
+                /\d/,    // First digit of line number
+                /\d/,    // Second digit of line number
+                /\d/,    // Third digit of line number
+                /\d/     // Fourth digit of line number
+              ]}
               value={formData.phoneNumber}
               onChange={handleInputChange}
               placeholder="Message and data rates may apply"
               className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
               required
               name="phoneNumber"
+              inputMode="numeric"
+              pattern="[0-9]*"
             />
           </div>
         </div>
@@ -211,13 +239,13 @@ export default function Home() {
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Time Availability</label>
-          <input
-            type="text"
+          <textarea
             name="timeAvailability"
             value={formData.timeAvailability}
             onChange={handleInputChange}
-            placeholder="When would you like for our technician to visit?"
-            className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+            placeholder={`When would you like for our technician to visit?\n(e.g. Monday 12-4 PM) at least 4 hour window`}
+            className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 whitespace-pre-wrap resize-none max-h-20 min-h-20"
+            rows={2}
             required
           />
         </div>
@@ -230,13 +258,13 @@ export default function Home() {
               className="mr-2"
               required
             />
-            I understand that there will be a minimum service fee of $80.
+            I understand that there will be a minimum service fee of $79.
           </label>
         </div>
         <div className="mb-4">
           <ReCAPTCHA
             ref={recaptchaRef}
-            sitekey={recaptchaKey}
+            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ''}
             onChange={handleRecaptchaChange}
           />
         </div>

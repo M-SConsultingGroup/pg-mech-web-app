@@ -3,7 +3,7 @@ name: Deploy to Production
 on:
   push:
     branches:
-      - main  # or any other branch you want to deploy from
+      - main
 
 jobs:
   build-and-deploy:
@@ -24,10 +24,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-buildx-
 
-    - name: Build Docker image
-      run: |
-        sudo docker build -t pg-mech-app:latest .
-
     - name: Deploy to VPS via SSH
       uses: appleboy/ssh-action@v0.1.5
       with:
@@ -37,6 +33,7 @@ jobs:
         script: |
           cd ~/pg-mech-app
           git pull
+          sudo docker build -t pg-mech-app:latest .
           sudo docker stack deploy -c docker-stack.yml pg-mech-app
       env:
         MONGODB_URI: ${{ secrets.MONGODB_URI }}

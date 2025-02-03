@@ -1,29 +1,43 @@
-name: Prod Deploy
+name: Deploy to Production
+
 on:
   push:
     branches:
-      - main
+      - main  # or any other branch you want to deploy from
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout the code
       uses: actions/checkout@v2
 
-    - name: Set up SSH agent
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
-    - name: Deploy to Docker Swarm
+    - name: Cache Docker layers
+      uses: actions/cache@v2
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    - name: Build Docker image
       run: |
-        ssh -o StrictHostKeyChecking=no root@${{ secrets.VPS_IP }} << 'EOF'
+        sudo docker build -t pg-mech-app:latest .
+
+    - name: Deploy to VPS via SSH
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: ${{ secrets.VPS_IP }}
+        username: root
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
           cd ~/pg-mech-app
           git pull
-          docker stack deploy -c docker-stack.yml pg-mech-app
-        EOF
+          sudo docker stack deploy -c docker-stack.yml pg-mech-app
       env:
         MONGODB_URI: ${{ secrets.MONGODB_URI }}
         JWT_SECRET: ${{ secrets.JWT_SECRET }}

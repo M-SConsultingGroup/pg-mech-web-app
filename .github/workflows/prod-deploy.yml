@@ -37,7 +37,7 @@ jobs:
         sudo chmod 644 pg-mech-app.tar 
 
     - name: Upload tarball as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pg-mech-app-tar
         path: pg-mech-app.tar

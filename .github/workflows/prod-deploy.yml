@@ -42,11 +42,12 @@ jobs:
         name: pg-mech-app-tar
         path: pg-mech-app.tar
 
-    - name: Set up SSH and add VPS to known_hosts
+    - name: Set up SSH Key
       run: |
         mkdir -p ~/.ssh
-        ssh-keyscan -t rsa ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
-        chmod 600 ~/.ssh/known_hosts
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
 
     - name: Deploy to VPS via SSH
       uses: appleboy/ssh-action@v0.1.5
@@ -57,7 +58,7 @@ jobs:
         port: 22
         script: |
           # Copy the tarball to the correct directory on the VPS
-          scp -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} pg-mech-app.tar root@${{ secrets.VPS_IP }}:~/pg-mech-app/
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa pg-mech-app.tar root@${{ secrets.VPS_IP }}:~/pg-mech-app/
 
           # Load the tarball on the VPS
           sudo docker load -i ~/pg-mech-app/pg-mech-app.tar

@@ -3,7 +3,7 @@ name: Deploy to Production
 on:
   push:
     branches:
-      - main  # or any other branch you want to deploy from
+      - main
 
 jobs:
   build-and-deploy:
@@ -33,7 +33,7 @@ jobs:
         sudo docker save -o pg-mech-app.tar pg-mech-app:latest
 
     - name: Upload tarball as artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: pg-mech-app-tar
         path: pg-mech-app.tar

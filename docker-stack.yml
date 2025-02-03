@@ -1,8 +1,8 @@
-version: '3.8'
+version: '1.0'
 
 services:
   pg-mech-app:
-    image: pg-mech-app:latest  # Ensure this is the correct image name and tag
+    image: pg-mech-app:latest
     deploy:
       replicas: 1
     ports:
@@ -15,4 +15,4 @@ services:
       - NEXT_PUBLIC_SITE_NAME=${NEXT_PUBLIC_SITE_NAME}
       - EMAIL_PASSWORD=${EMAIL_PASSWORD}
     volumes:
-      - /data:/app/data  # Example volume mount, adjust as needed
+      - /data:/app/data

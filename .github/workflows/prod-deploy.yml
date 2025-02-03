@@ -25,7 +25,6 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
         script: |
-          # Navigate to the project directory
           cd ~/pg-mech-app
 
           # Pull the latest changes
@@ -41,9 +40,13 @@ jobs:
           EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
           EOF
 
-          # Build the Docker image locally
+          # Build the Docker image
           sudo docker build -t pg-mech-app:latest .
 
-          # Deploy using Docker Compose
-          sudo docker-compose down
-          sudo docker-compose up -d --remove-orphans
+          # Stop and remove any existing container
+          sudo docker stop pg-mech-app || true
+          sudo docker rm pg-mech-app || true
+
+          # Run the new container
+          sudo docker run -d --name pg-mech-app --env-file .env -p 3000:3000 pg-mech-app:latest
+

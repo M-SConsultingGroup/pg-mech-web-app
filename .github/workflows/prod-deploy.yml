@@ -37,10 +37,16 @@ jobs:
         sudo chmod 644 pg-mech-app.tar 
 
     - name: Upload tarball as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: pg-mech-app-tar
         path: pg-mech-app.tar
+
+    - name: Set up SSH and add VPS to known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -t rsa ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
 
     - name: Deploy to VPS via SSH
       uses: appleboy/ssh-action@v0.1.5
@@ -50,14 +56,14 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
         script: |
-          # Copy the tarball to the VPS
-          scp pg-mech-app.tar root@${{ secrets.VPS_IP }}:/root/
+          # Copy the tarball to the correct directory on the VPS
+          scp pg-mech-app.tar root@${{ secrets.VPS_IP }}:~/pg-mech-app/
 
           # Load the tarball on the VPS
-          sudo docker load -i /root/pg-mech-app.tar
+          sudo docker load -i ~/pg-mech-app/pg-mech-app.tar
 
-          # Deploy the stack
-          sudo docker stack deploy -c /root/docker-stack.yml pg-mech-app
+          # Deploy the stack (docker-stack.yml should already be in the repo on the VPS)
+          sudo docker stack deploy -c ~/pg-mech-app/docker-stack.yml pg-mech-app
       env:
         MONGODB_URI: ${{ secrets.MONGODB_URI }}
         JWT_SECRET: ${{ secrets.JWT_SECRET }}

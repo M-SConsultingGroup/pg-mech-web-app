@@ -22,6 +22,7 @@ const transporter = nodemailer.createTransport({
     user: `info@${process.env.NEXT_PUBLIC_SITE_NAME}`,
     pass: process.env.EMAIL_PASSWORD,
   },
+  authMethod: 'LOGIN',
 });
 
 const saveToSent = async (mailOptions: nodemailer.SendMailOptions) => {

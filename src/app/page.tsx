@@ -149,13 +149,13 @@ export default function Home() {
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Name</label>
           <input
-            type="text"
-            name="name"
-            value={formData.name}
+            type="email"
+            value={formData.email}
             onChange={handleInputChange}
-            placeholder="Will be used for billing"
+            placeholder="Your Primary Email Address"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
+            name="email"
           />
         </div>
         <div className="mb-4">

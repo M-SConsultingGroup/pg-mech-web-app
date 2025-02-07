@@ -9,7 +9,7 @@ const imapConfig = {
     host: 'imap.privateemail.com',
     port: 993,
     tls: true,
-    authTimeout: 3000,
+    authTimeout: 5000,
   },
 };
 
@@ -17,7 +17,7 @@ const imapConfig = {
 const transporter = nodemailer.createTransport({
   host: 'mail.privateemail.com',
   port: 587, // Use 465 for SSL
-  secure: true, // true for 465, false for 587
+  secure: false, // true for 465, false for 587
   auth: {
     user: `info@${process.env.NEXT_PUBLIC_SITE_NAME}`,
     pass: process.env.EMAIL_PASSWORD,

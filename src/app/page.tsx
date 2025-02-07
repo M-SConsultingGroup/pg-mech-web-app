@@ -177,27 +177,27 @@ export default function Home() {
             <MaskedInput
               mask={[
                 '(',
-                /[2-9]/, // First digit of area code must be 2-9
-                /\d/,    // Second digit of area code
-                /\d/,    // Third digit of area code
+                /[2-9]/,
+                /\d/,
+                /\d/,
                 ')',
-                /\d/,    // First digit of exchange code
-                /\d/,    // Second digit of exchange code
-                /\d/,    // Third digit of exchange code
+                ' ',
+                /\d/,
+                / \d/,
+                /\d/,
                 '-',
-                /\d/,    // First digit of line number
-                /\d/,    // Second digit of line number
-                /\d/,    // Third digit of line number
-                /\d/     // Fourth digit of line number
+                /\d/,
+                /\d/,
+                /\d/,
+                /\d/
               ]}
               value={formData.phoneNumber}
               onChange={handleInputChange}
-              placeholder="Message and data rates may apply"
+              placeholder="(123) 456-7890"
               className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
               required
               name="phoneNumber"
-              inputMode="numeric"
-              pattern="[0-9]*"
+              inputMode="tel"
             />
           </div>
         </div>

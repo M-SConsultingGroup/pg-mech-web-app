@@ -175,21 +175,21 @@ export default function Home() {
           <div className="flex items-center">
             <span className="mr-2 border p-2 rounded">+1</span>
             <MaskedInput
-              mask={[
+             mask={[
                 '(',
-                /[2-9]/,
-                /\d/,
-                /\d/,
+                /[2-9]/, // First digit of area code must be 2-9
+                /\d/,    // Second digit of area code
+                /\d/,    // Third digit of area code
                 ')',
-                ' ',
-                /\d/,
-                / \d/,
-                /\d/,
+                ' ',     // Ensures a space after the area code
+                /\d/,    // First digit of exchange code
+                /\d/,    // Second digit of exchange code
+                /\d/,    // Third digit of exchange code
                 '-',
-                /\d/,
-                /\d/,
-                /\d/,
-                /\d/
+                /\d/,    // First digit of line number
+                /\d/,    // Second digit of line number
+                /\d/,    // Third digit of line number
+                /\d/     // Fourth digit of line number
               ]}
               value={formData.phoneNumber}
               onChange={handleInputChange}

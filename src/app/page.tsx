@@ -149,19 +149,19 @@ export default function Home() {
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Name</label>
           <input
-            type="email"
-            value={formData.email}
+            type="name"
+            value={formData.name}
             onChange={handleInputChange}
-            placeholder="Your Primary Email Address"
+            placeholder="Name will be used for billing"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
-            name="email"
+            name="name"
           />
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Email</label>
-          <MaskedInput
-            mask={[/\w/, /\w/, /\w/, '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*']}
+          <input
+            type="email"
             value={formData.email}
             onChange={handleInputChange}
             placeholder="Your Primary Email Address"

@@ -149,19 +149,19 @@ export default function Home() {
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Name</label>
           <input
-            type="text"
-            name="name"
+            type="name"
             value={formData.name}
             onChange={handleInputChange}
-            placeholder="Will be used for billing"
+            placeholder="Name will be used for billing"
             className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
             required
+            name="name"
           />
         </div>
         <div className="mb-4">
           <label className="block mb-2 text-gray-700">Email</label>
-          <MaskedInput
-            mask={[/\w/, /\w/, /\w/, '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*']}
+          <input
+            type="email"
             value={formData.email}
             onChange={handleInputChange}
             placeholder="Your Primary Email Address"
@@ -175,12 +175,13 @@ export default function Home() {
           <div className="flex items-center">
             <span className="mr-2 border p-2 rounded">+1</span>
             <MaskedInput
-              mask={[
+             mask={[
                 '(',
                 /[2-9]/, // First digit of area code must be 2-9
                 /\d/,    // Second digit of area code
                 /\d/,    // Third digit of area code
                 ')',
+                ' ',     // Ensures a space after the area code
                 /\d/,    // First digit of exchange code
                 /\d/,    // Second digit of exchange code
                 /\d/,    // Third digit of exchange code
@@ -192,12 +193,11 @@ export default function Home() {
               ]}
               value={formData.phoneNumber}
               onChange={handleInputChange}
-              placeholder="Message and data rates may apply"
+              placeholder="(123) 456-7890"
               className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
               required
               name="phoneNumber"
-              inputMode="numeric"
-              pattern="[0-9]*"
+              inputMode="tel"
             />
           </div>
         </div>

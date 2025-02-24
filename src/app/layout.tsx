@@ -5,6 +5,8 @@ import { Toaster } from 'react-hot-toast';
 import Header from '@/components/Headers';
 import { AuthProvider } from '@/context/AuthContext';
 import GoogleMapsLoader from '@/components/GoogleMapsLoader';
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -30,10 +32,13 @@ export default function RootLayout({ children }: Readonly<{
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Toaster />
         <AuthProvider>
-          <Header />
+          <Navbar />
           <GoogleMapsLoader>
-            {children}
+            <main>
+              {children}
+            </main>
           </GoogleMapsLoader>
+          <Footer />
         </AuthProvider>
       </body>
     </html>

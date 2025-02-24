@@ -16,13 +16,12 @@ const imapConfig = {
 // Create a transporter object using the default SMTP transport
 const transporter = nodemailer.createTransport({
   host: 'mail.privateemail.com',
-  port: 587, // Use 465 for SSL
-  secure: false, // true for 465, false for 587
+  port: 465, // Use 465 for SSL
+  secure: true, // true for 465, false for 587
   auth: {
     user: `info@${process.env.NEXT_PUBLIC_SITE_NAME}`,
     pass: process.env.EMAIL_PASSWORD,
   },
-  authMethod: 'LOGIN',
 });
 
 const saveToSent = async (mailOptions: nodemailer.SendMailOptions) => {
@@ -63,20 +62,23 @@ export async function POST(req: NextRequest) {
   try {
     const { to, subject, message } = await req.json();
 
-    // Input validation
     if (!to || !subject || !message) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const mailOptions: nodemailer.SendMailOptions = {
-      from: '"PG Mechanical" <info@pgmechanical.us>', // Sender address
+      from: `info@${process.env.NEXT_PUBLIC_SITE_NAME}`,
       to,
       subject,
       text: message,
     };
 
     const info = await transporter.sendMail(mailOptions);
-    await saveToSent(mailOptions); // Save the sent email to the "Sent" folder
+
+    // Call saveToSent but do not await or fail on it
+    saveToSent(mailOptions).catch((error) => {
+      console.error("Non-blocking save to Sent error:", error);
+    });
 
     return NextResponse.json({ response: info, success: true }, { status: 200 });
   } catch (error) {

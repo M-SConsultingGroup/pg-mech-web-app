@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from 'react-hot-toast';
-import Header from '@/components/Headers';
 import { AuthProvider } from '@/context/AuthContext';
 import GoogleMapsLoader from '@/components/GoogleMapsLoader';
 import Navbar from "@/components/Navbar";

@@ -76,14 +76,6 @@ export default function Login() {
         Home
       </button>
       <div className="w-full max-w-lg bg-white p-8 rounded-lg shadow-lg relative">
-        <Image
-          className="mb-8"
-          src="/next-button.svg"
-          alt="Next.js logo"
-          width={64}
-          height={64}
-          priority
-        />
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div className="mb-4">
             <label className="block mb-2 text-gray-700">Username</label>

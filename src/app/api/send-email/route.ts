@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import Imap from 'imap-simple';
+import Imap, { ImapSimple } from 'imap-simple';
 
 const imapConfig = {
   imap: {
@@ -9,8 +9,8 @@ const imapConfig = {
     host: 'imap.privateemail.com',
     port: 993,
     tls: true,
-    authTimeout: 3000
-  }
+    authTimeout: 5000,
+  },
 };
 
 // Create a transporter object using the default SMTP transport
@@ -22,48 +22,67 @@ const transporter = nodemailer.createTransport({
     user: `info@${process.env.NEXT_PUBLIC_SITE_NAME}`,
     pass: process.env.EMAIL_PASSWORD,
   },
-  // requireTLS: true, // Ensure TLS is used if not using SSL
 });
 
 const saveToSent = async (mailOptions: nodemailer.SendMailOptions) => {
-  const connection = await Imap.connect(imapConfig);
-  await connection.openBox('Sent');
+  let connection: ImapSimple | null = null;
+  try {
+    connection = await Imap.connect(imapConfig);
+    await connection.openBox('Sent');
 
-  const rawEmail = [
-    `From: ${mailOptions.from}`,
-    `To: ${mailOptions.to}`,
-    `Subject: ${mailOptions.subject}`,
-    '',
-    mailOptions.text,
-  ].join('\n');
+    const rawEmail = [
+      `From: ${mailOptions.from}`,
+      `To: ${mailOptions.to}`,
+      `Subject: ${mailOptions.subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/plain; charset="UTF-8"`,
+      ``,
+      mailOptions.text,
+    ].join('\r\n');
 
-  await new Promise<void>((resolve, reject) => {
-    connection.imap.append(rawEmail, { mailbox: 'Sent' }, (err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
+    await new Promise<void>((resolve, reject) => {
+      connection!.imap.append(rawEmail, { mailbox: 'Sent' }, (err: Error | null) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
     });
-  });
-  connection.end();
+  } catch (error) {
+    console.error("Error saving email to Sent folder:", error);
+  } finally {
+    if (connection) {
+      connection.end();
+    }
+  }
 };
 
 export async function POST(req: NextRequest) {
-  const { to, subject, message } = await req.json();
-
-  const mailOptions = {
-    from: '"PG Mechanical" <info@pgmechanical.us>', // Sender address
-    to,
-    subject,
-    text: message
-  };
-
   try {
+    const { to, subject, message } = await req.json();
+
+    if (!to || !subject || !message) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const mailOptions: nodemailer.SendMailOptions = {
+      from: `info@${process.env.NEXT_PUBLIC_SITE_NAME}`,
+      to,
+      subject,
+      text: message,
+    };
+
     const info = await transporter.sendMail(mailOptions);
-    await saveToSent(mailOptions); // Save the sent email to the "Sent" folder
+
+    // Call saveToSent but do not await or fail on it
+    saveToSent(mailOptions).catch((error) => {
+      console.error("Non-blocking save to Sent error:", error);
+    });
+
     return NextResponse.json({ response: info, success: true }, { status: 200 });
   } catch (error) {
+    console.error("Email sending error:", error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

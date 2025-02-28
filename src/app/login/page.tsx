@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { getLogger } from '@/lib/logger';
 import { getCorrelationId } from '@/utils/helpers';
@@ -69,12 +68,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen p-8 pb-20 flex flex-col items-center justify-center bg-gray-100 relative">
-      <button
-        onClick={() => router.push('/')}
-        className="absolute top-4 right-4 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded shadow-lg transition duration-300"
-      >
-        Home
-      </button>
       <div className="w-full max-w-lg bg-white p-8 rounded-lg shadow-lg relative">
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div className="mb-4">

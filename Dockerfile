@@ -13,6 +13,10 @@ RUN npm install
 # Copy local code to the container image.
 COPY . .
 
+# Set environment variables for the Next.js app
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
 # Build the Next.js app
 RUN npm run build
 

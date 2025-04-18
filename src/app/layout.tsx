@@ -3,9 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/context/AuthContext';
-import GoogleMapsLoader from '@/components/GoogleMapsLoader';
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -32,12 +30,9 @@ export default function RootLayout({ children }: Readonly<{
         <Toaster />
         <AuthProvider>
           <Navbar />
-          <GoogleMapsLoader>
-            <main>
-              {children}
-            </main>
-          </GoogleMapsLoader>
-          <Footer />
+          <main>
+            {children}
+          </main>
         </AuthProvider>
       </body>
     </html>

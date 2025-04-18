@@ -4,10 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getLogger } from '@/lib/logger';
-import { getCorrelationId } from '@/utils/helpers';
-
-const logger = getLogger();
+import { apiFetch } from '@/lib/api';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -27,29 +24,17 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
   
-    const correlationId = getCorrelationId();
-    const loggerWithCorrelationId = logger.child({ correlationId });
-  
     try {
-      const response = await fetch('/api/users/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-  
+      const response = await apiFetch('/api/users/login', 'POST', '', { username, password });
       const data = await response.json();
       setLoading(false);
       if (response.ok) {
-        loggerWithCorrelationId.debug('Login successful : ', data.username);
-        login(data.username, data.token);
+        login(data.user, data.token);
         toast.success('Login successful', {
           className: 'text-xl',
         });
         router.push('/tickets');
       } else {
-        loggerWithCorrelationId.warn('Login failed', data);
         throw new Error(data.error);
       }
     } catch (error) {
@@ -58,7 +43,6 @@ export default function Login() {
           className: 'text-xl',
         });
       } else {
-        loggerWithCorrelationId.error('Login error:', error);
         toast.error('An error occurred, please try again', {
           className: 'text-xl',
         });

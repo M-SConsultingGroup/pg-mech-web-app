@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
+import { apiFetch } from '@/lib/api';
 
 export default function CreateUser() {
   const [loading, setLoading] = useState(false);
@@ -12,20 +13,13 @@ export default function CreateUser() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const authToken = localStorage.getItem('token'); // Get the auth token from local storage
-    if (!authToken) {
-      toast.error('No auth token, please sign out and sign in again');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('You are not authorized to view this page');
       return;
     }
     setLoading(true);
-    const response = await fetch('/api/users/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ username, password, isAdmin }),
-    });
+    const response = await apiFetch('/api/users/register', 'POST', token, { username, password, isAdmin });
     setLoading(false);
     if (response.ok) {
       toast.success('User created successfully');
@@ -90,10 +84,10 @@ export default function CreateUser() {
             </button>
           </div>
           {loading && (
-          <div className="loader-container">
-            <div className="loader"></div>
-          </div>
-        )}
+            <div className="loader-container">
+              <div className="loader"></div>
+            </div>
+          )}
         </form>
       </div>
     </div>

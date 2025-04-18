@@ -5,10 +5,10 @@ import { TICKET_STATUSES } from '@/common/constants';
 import UnifiedModal from '@/components/UnifiedModal';
 import TicketActions from '@/components/TicketActions';
 import { useRouter } from 'next/navigation';
-import { Loader } from '@googlemaps/js-api-loader';
 import toast from 'react-hot-toast';
 import Modal from 'react-modal';
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api';
 
 export default function Tickets() {
   const router = useRouter();
@@ -37,9 +37,6 @@ export default function Tickets() {
     isOpen: false,
   });
 
-  let googleMapsLoader: Loader | null = null;
-  let googleMaps: google.maps.Map | null = null;
-
   useEffect(() => {
     Modal.setAppElement('#table');
     const token = localStorage.getItem('token');
@@ -49,23 +46,19 @@ export default function Tickets() {
     }
 
     const fetchTickets = async () => {
-      const response = await fetch('/api/tickets', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const queryParams = new URLSearchParams();
+      if (statusFilter) queryParams.append('status', statusFilter);
+      if (assignedToFilter) queryParams.append('user', assignedToFilter);
+      
+      const response = await apiFetch(`/api/tickets/all?${queryParams.toString()}`, 'GET', token);
       const data = await response.json();
       setTickets(data);
     };
 
     const fetchUsers = async () => {
-      const response = await fetch('/api/users/getAllUsers', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await apiFetch('/api/users/all', 'GET', token);
       const data = await response.json();
-      setUsers(data.map((user: { username: string }) => user.username));
+      setUsers(data);
     };
 
     const fetchData = async () => {
@@ -73,7 +66,7 @@ export default function Tickets() {
     };
 
     fetchData();
-  }, [router]);
+  }, [router, statusFilter, assignedToFilter]);
 
   const handlePhoneClick = async (phoneNumber: string) => {
     setModalProps({
@@ -81,117 +74,6 @@ export default function Tickets() {
       isOpen: true,
       phoneNumber,
       message: 'Do you want to call or text this number?',
-    });
-  };
-
-  const handleStopClick = (ticket: Ticket) => {
-    setModalProps({
-      modalType: 'notes',
-      isOpen: true,
-      message: 'Why do you want to stop this ticket?',
-      onSaveNotes: (notes: string) => handleSaveNotes(notes, ticket),
-    });
-  };
-
-  const handleSaveNotes = async (notes: string, ticket: Ticket) => {
-    if (!ticket) return;
-
-    const authToken = localStorage.getItem('token');
-    if (!authToken) {
-      toast.error('You must be logged in to stop a ticket');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const updatedTicket = {
-        ...ticket,
-        inProgress: false,
-        additionalNotes: notes,
-      };
-
-      const ticketUpdatePromise = fetch(`/api/tickets?id=${ticket._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(updatedTicket),
-      });
-
-      const timeEntryUpdatePromise = fetch('/api/time-entry', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          ticket: ticket.ticketNumber,
-          user: ticket.assignedTo,
-          endTime: new Date(),
-        }),
-      });
-
-      const [ticketResponse, timeEntryResponse] = await Promise.all([ticketUpdatePromise, timeEntryUpdatePromise]);
-
-      if (ticketResponse.ok && timeEntryResponse.ok) {
-        setTickets((prev) =>
-          prev.map((a) =>
-            a._id === ticket._id ? updatedTicket : a
-          )
-        );
-        toast.success('Ticket updated successfully');
-      } else {
-        toast.error('Failed to update ticket');
-      }
-    } catch (error) {
-      toast.error('Failed to update ticket');
-    } finally {
-      setLoading(false);
-      setModalProps({
-        modalType: 'none',
-        isOpen: false,
-      });
-    }
-  };
-
-  const initializeGoogleMaps = async () => {
-    if (!googleMapsLoader) {
-      googleMapsLoader = new Loader({
-        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-        version: 'weekly',
-      });
-    }
-    if (!googleMaps) {
-      await googleMapsLoader.importLibrary('maps');
-      googleMaps = new google.maps.Map(document.createElement('div'));
-    }
-  };
-
-  const calculateETA = async (destination: string) => {
-    await initializeGoogleMaps();
-    if (!googleMaps) {
-      throw new Error('Google Maps is not initialized');
-    }
-    const directionsService = new google.maps.DirectionsService();
-
-    return new Promise<string>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const origin = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-        const request = {
-          origin,
-          destination,
-          travelMode: google.maps.TravelMode.DRIVING,
-        };
-
-        directionsService.route(request, (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
-          if (status === google.maps.DirectionsStatus.OK && result) {
-            const eta = result.routes[0] && result.routes[0].legs[0] && result.routes[0].legs[0].duration ? result.routes[0].legs[0].duration.text : '';
-            resolve(eta);
-          }
-        });
-      });
     });
   };
 
@@ -235,15 +117,14 @@ export default function Tickets() {
       message: message,
       onConfirm: async () => {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/tickets?id=${ticket._id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        if (!token) {
+          toast.error('You are not authorized to view this page');
+          return;
+        }
+        const response = await apiFetch(`/api/tickets/${ticket.id}`, 'DELETE', token);
 
         if (response.ok) {
-          setTickets((prev) => prev.filter((a) => a._id !== ticket._id));
+          setTickets((prev) => prev.filter((a) => a.id !== ticket.id));
           toast.success('Ticket deleted successfully');
         } else {
           toast.error('Failed to delete ticket');
@@ -283,7 +164,7 @@ export default function Tickets() {
   };
 
   const handleAssignedUserChange = async (ticket: Ticket, selectedUser: string) => {
-    const previousUser = assignedUsers[ticket._id];
+    const previousUser = assignedUsers[ticket.id];
     const token = localStorage.getItem('token');
     let status = '';
     let selectedPriority = '';
@@ -298,37 +179,34 @@ export default function Tickets() {
 
     setAssignedUsers((prev) => ({
       ...prev,
-      [ticket._id]: selectedUser,
+      [ticket.id]: selectedUser,
     }));
 
     const body = {
-      ticketId: ticket._id,
+      ticketId: ticket.id,
       assignedTo: selectedUser,
       priority: selectedPriority === '' ? ticket.priority : selectedPriority,
       status: status === '' ? ticket.status : status
     };
 
-    const response = await fetch(`/api/tickets?id=${ticket._id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(body)
-    });
+    if (!token) {
+      toast.error('You are not authorized to view this page');
+      return;
+    }
 
+    const response = await apiFetch(`/api/tickets/${ticket.id}`, 'POST', token, body);
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
         prev.map((currentTicket) =>
-          currentTicket._id === ticket._id ? updatedTicket : currentTicket
+          currentTicket.id === ticket.id ? updatedTicket : currentTicket
         )
       );
       toast.success('Ticket updated successfully');
     } else {
       setAssignedUsers((prev) => ({
         ...prev,
-        [ticket._id]: previousUser,
+        [ticket.id]: previousUser,
       }));
       toast.error('Failed to update ticket');
     }
@@ -351,99 +229,15 @@ export default function Tickets() {
     }
   };
 
-  const handleStartClick = async (ticket: Ticket) => {
-    setLoading(true);
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast.error('You must be logged in to start a ticket');
-      setLoading(false);
-      return;
-    }
-    if (!ticket.assignedTo || ticket.assignedTo === 'Unassigned') {
-      toast.error('No user assigned to ticket');
-      setLoading(false);
-      return;
-    }
-
-    const startTime = new Date().toISOString();
-
-    // Update the ticket to set inProgress to true
-    const updatedTicket = {
-      ...ticket,
-      inProgress: true,
-    };
-
-    const response = await fetch(`/api/tickets?id=${ticket._id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(updatedTicket),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      toast.error(errorData.message);
-      setLoading(false);
-      return;
-    }
-
-    // Update the local state with the updated ticket
-    setTickets((prev) =>
-      prev.map((t) => (t._id === ticket._id ? updatedTicket : t))
-    );
-
-    // Send the time entry request asynchronously
-    fetch('/api/time-entry', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        user: ticket.assignedTo,
-        ticket: ticket.ticketNumber,
-        startTime,
-        endTime: null,
-      }),
-    }).then(response => {
-      if (!response.ok) {
-        response.json().then(errorData => {
-          toast.error(errorData.message);
-        });
-      }
-    }).catch(error => {
-      toast.error('An error occurred while creating the time entry');
-    });
-
-    // Wait for the calculateETA function
-    try {
-      const eta = await calculateETA(ticket.serviceAddress);
-      setLoading(false);
-      window.location.href = `sms:${ticket.phoneNumber}?body=Hi,%20This%20is%20your%20technician%20from%20PG%20Mech,%20I%20am%20on%20my%20way.%20Please%20be%20ready.%20My%20ETA%20is%20${eta}`;
-    } catch (error) {
-      setLoading(false);
-      toast.error('An error occurred while calculating the ETA');
-    }
-  };
-
   const filteredTickets = tickets
     .filter((ticket) =>
       ticket.name.toLowerCase().includes(filter.toLowerCase()) ||
       ticket.serviceAddress.toLowerCase().includes(filter.toLowerCase())
     )
-    .filter((ticket) =>
-      statusFilter ? ticket.status === statusFilter : true
-    )
-    .filter((ticket) =>
-      assignedToFilter ? ticket.assignedTo === assignedToFilter : true
-    )
     .sort((a, b) => {
       if (!sortField) return 0;
       const aValue = a[sortField as keyof Ticket];
       const bValue = b[sortField as keyof Ticket];
-
 
       if (sortField === 'priority') {
         const aPriority = priorityMap[a.priority as Priority] ?? 0;
@@ -467,29 +261,63 @@ export default function Tickets() {
   return (
     <div id="table" className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">
       {/* Overview */}{isAdmin && (
-        <div className="w-full bg-white p-2 rounded-lg shadow-lg">
-          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            <h1 className="text-3xl font-bold text-gray-800 text-center">Overview</h1>
-            <div className="mt-1 p-1 rounded-lg shadow-md bg-gray-100">
-              <p className="text-lg text-gray-800">Total New Tickets: <span className="font-bold text-gray-800">{tickets.filter(ticket => ticket.status === 'New').length}</span></p>
+        <div className="w-full bg-white p-4 rounded-lg shadow-lg mb-4">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">Dashboard Overview</h1>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Tickets Card */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+              <h3 className="text-lg font-semibold text-blue-800">Total Tickets</h3>
+              <p className="text-3xl font-bold text-blue-600">{tickets.length}</p>
             </div>
-            {users.map((user) => {
-              const userTickets = tickets.filter((ticket) => ticket.assignedTo === user);
-              const totalTickets = userTickets.length;
-              const openTickets = userTickets.filter((ticket) => ticket.status === 'Open').length;
-              const closedTickets = userTickets.filter((ticket) => ticket.status === 'Closed').length;
 
-              return (
-                <div key={user} className={`p-1 rounded-lg shadow-md ${assignedToFilter === user ? 'bg-gray-300' : 'bg-gray-100'}`} onClick={() => { setStatusFilter(''); setAssignedToFilter(user); }}>
-                  <h2 className={`text-base font-semibold text-gray-800 ${assignedToFilter === user ? 'text-xl' : ''}`}>{user}</h2>
-                  <div className="mt-1">
-                    <p className="text-sm text-gray-600">Total: <span className="font-bold text-gray-800">{totalTickets}</span></p>
-                    <p className="text-sm text-gray-600">Open: <span className="font-bold text-gray-800">{openTickets}</span></p>
-                    <p className="text-sm text-gray-600">Closed: <span className="font-bold text-gray-800">{closedTickets}</span></p>
-                  </div>
-                </div>
-              );
-            })}
+            {/* New Tickets Card */}
+            <div 
+              className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 cursor-pointer"
+              onClick={() => {
+                setStatusFilter('New');
+                setAssignedToFilter('');
+              }}
+              >
+              <h3 className="text-lg font-semibold text-yellow-800">New Tickets</h3>
+              <p className="text-3xl font-bold text-yellow-600">
+                {tickets.filter(ticket => ticket.status === 'New').length}
+              </p>
+            </div>
+
+            {/* User Stats */}
+            <div className="bg-green-50 p-4 rounded-lg border border-green-100 col-span-1 sm:col-span-2 lg:col-span-2">
+              <h3 className="text-lg font-semibold text-green-800 mb-2">Team Stats</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {users.map((user) => {
+                  const userTickets = tickets.filter(ticket => ticket.assignedTo === user);
+                  const openTickets = userTickets.filter(ticket => ticket.status === 'Open').length;
+
+                  return (
+                    <div
+                      key={user}
+                      className={`p-2 rounded cursor-pointer transition-colors ${assignedToFilter === user
+                          ? 'bg-green-200 border-green-300'
+                          : 'bg-white hover:bg-green-100 border-green-100'
+                        }`}
+                      onClick={() => {
+                        setStatusFilter('');
+                        setAssignedToFilter(assignedToFilter === user ? '' : user);
+                      }}
+                    >
+                      <p className="font-medium text-sm truncate">{user}</p>
+                      <p className="text-xs text-gray-600">
+                        <span className="font-semibold">{userTickets.length}</span> tickets
+                      </p>
+                      {openTickets > 0 && (
+                        <p className="text-xs text-yellow-600">
+                          <span className="font-semibold">{openTickets}</span> open
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -571,8 +399,8 @@ export default function Tickets() {
             </thead>
             <tbody>
               {displayedTickets.map((ticket: Ticket) => (
-                <React.Fragment key={ticket._id}>
-                  <tr onClick={() => handleRowToggle(ticket._id!)}>
+                <React.Fragment key={ticket.id}>
+                  <tr onClick={() => handleRowToggle(ticket.id!)}>
                     <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.ticketNumber}</td>
                     {/* Priority */}<td className="border border-gray-400 p-2">
                       <div className="flex items-center justify-center">
@@ -606,7 +434,7 @@ export default function Tickets() {
                     <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.status}</td>
                     {/* Assigned To */}{isAdmin && (<td className="border border-gray-400 p-2 hidden md:table-cell">
                       <select
-                        value={assignedUsers[ticket._id!] || ticket.assignedTo || "Unassigned"}
+                        value={assignedUsers[ticket.id!] || ticket.assignedTo || "Unassigned"}
                         onChange={(e) => handleAssignedUserChange(ticket, e.target.value)}
                         className="border p-1 rounded"
                       >
@@ -624,15 +452,13 @@ export default function Tickets() {
                         <TicketActions
                           ticket={ticket}
                           isAdmin={isAdmin}
-                          handleStartClick={handleStartClick}
-                          handleStopClick={handleStopClick}
                           handlePhoneClick={handlePhoneClick}
                           handleRowDelete={handleRowDelete}
                         />
                       </div>
                     </td>
                   </tr>
-                  {/* Hidden rows */}{expandedRows.has(ticket._id!) && (
+                  {/* Hidden rows */}{expandedRows.has(ticket.id!) && (
                     <tr className="md:hidden">
                       <td colSpan={3} className="border border-gray-400 space-y-1 p-2">
                         <div><strong>Ticket Number:</strong> {ticket.ticketNumber}</div>
@@ -646,7 +472,7 @@ export default function Tickets() {
                           <div>
                             <strong>Assigned To:</strong>
                             <select
-                              value={assignedUsers[ticket._id!] || ticket.assignedTo || 'Unassigned'}
+                              value={assignedUsers[ticket.id!] || ticket.assignedTo || 'Unassigned'}
                               onChange={(e) => handleAssignedUserChange(ticket, e.target.value)}
                               className="border p-1 rounded"
                             >
@@ -663,8 +489,6 @@ export default function Tickets() {
                           <TicketActions
                             ticket={ticket}
                             isAdmin={isAdmin}
-                            handleStartClick={handleStartClick}
-                            handleStopClick={handleStopClick}
                             handlePhoneClick={handlePhoneClick}
                             handleRowDelete={handleRowDelete}
                           />

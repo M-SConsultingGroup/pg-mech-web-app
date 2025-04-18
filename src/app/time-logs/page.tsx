@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { TimeEntry, UserHours } from '@/common/interfaces';
 import { getWeekNumber } from '@/common/helperFunctions';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api';
 
 export default function UserHoursPage() {
   const [userHours, setUserHours] = useState<UserHours>({});
@@ -17,13 +18,12 @@ export default function UserHoursPage() {
       router.push('/tickets')
     }
     const fetchTimeEntries = async (weekNumber: number) => {
-      const response = await fetch(`/api/time-entry?week=${weekNumber}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        method: 'GET',
-      });
+      if (!token) {
+        console.error('No token found, redirecting to login...');
+        router.push('/login');
+        return;
+      }
+      const response = await apiFetch(`/api/time-entry/{weekNumber}`, 'GET', token);
       const timeEntries: TimeEntry[] = await response.json();
 
       console.log(timeEntries);

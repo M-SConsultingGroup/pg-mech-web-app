@@ -2,10 +2,11 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { jwtDecode, JwtPayload } from 'jwt-decode';
 import { useRouter } from 'next/navigation';
+import { User } from '@/common/interfaces';
 
 interface AuthContextType {
   isLoggedIn: boolean;
-  login: (username: string, token: string) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
   username: string;
   isAdmin: boolean;
@@ -47,11 +48,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [logout]);
 
-  const login = (username: string, token: string) => {
-    const decodedToken = jwtDecode<DecodedToken>(token);
+  const login = (user: User, token: string) => {
     setIsLoggedIn(true);
-    setUsername(username);
-    setIsAdmin(decodedToken.isAdmin);
+    setUsername(user.username);
+    setIsAdmin(user.isAdmin);
     localStorage.setItem('token', token);
     localStorage.setItem('username', username);
   };

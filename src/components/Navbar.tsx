@@ -48,11 +48,6 @@ const Navbar = () => {
           />
           <h1 className="text-2xl font-bold ml-2">PG Mechanical</h1>
         </div>
-        <ul className="flex gap-6 items-center">
-          <li><Link href="/">Home</Link></li>
-          <li><Link href="/services">Services</Link></li>
-          <li><Link href="/contact">Contact</Link></li>
-        </ul>
         <div className="relative flex items-center" ref={dropdownRef}>
           {isLoggedIn ? (
             <button
@@ -72,7 +67,7 @@ const Navbar = () => {
             </button>
           )}
           {dropdownOpen && isLoggedIn && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded shadow-lg z-50">
+            <div className="absolute top-12 right-0 mt-2 w-48 bg-white border border-gray-300 rounded shadow-lg z-50">
               {isAdmin && (
                 <>
                   <button

@@ -6,31 +6,16 @@ import { Ticket } from '@/common/interfaces';
 interface TicketActionsProps {
   ticket: Ticket;
   isAdmin: boolean;
-  handleStartClick: (ticket: Ticket) => void;
-  handleStopClick: (ticket: Ticket) => void;
   handlePhoneClick: (phoneNumber: string, serviceAddress: string) => void;
   handleRowDelete: (ticket: Ticket) => void;
 }
 
-const TicketActions: React.FC<TicketActionsProps> = ({ ticket, isAdmin, handleStartClick, handleStopClick, handlePhoneClick, handleRowDelete }) => {
+const TicketActions: React.FC<TicketActionsProps> = ({ ticket, isAdmin, handlePhoneClick, handleRowDelete }) => {
   const router = useRouter();
 
   return (
     <>
-      {ticket.status === 'Open' && (
-        <>
-          {ticket.inProgress ? (
-            <button onClick={() => handleStopClick(ticket)} className="outline-2 outline p-1 rounded flex">
-              <Image src="/stop-sign.svg" alt="Stop" width={25} height={25} />
-            </button>
-          ) : (
-            <button onClick={() => handleStartClick(ticket)} className="outline-2 outline p-1 rounded flex">
-              <Image src="/play-button.svg" alt="Start" width={25} height={25} />
-            </button>
-          )}
-        </>
-      )}
-      <button onClick={() => router.push(`/tickets/${ticket._id}`)} className="bg-yellow-500 p-1 rounded flex">
+      <button onClick={() => router.push(`/tickets/${ticket.id}`)} className="bg-yellow-500 p-1 rounded flex">
         <Image src="/edit-pen.svg" alt="Edit" width={25} height={25} />
       </button>
       <button onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)} className="bg-gray-500 p-1 rounded flex">

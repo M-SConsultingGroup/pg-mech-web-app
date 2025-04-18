@@ -3,9 +3,10 @@ import { User } from '@/common/interfaces';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import UnifiedModal from '@/components/UnifiedModal';
+import { apiFetch } from '@/lib/api';
 
 export default function AllUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<string[]>([]);
   const [passwords, setPasswords] = useState<{ [key: string]: string }>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
@@ -16,11 +17,11 @@ export default function AllUsersPage() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const fetchUsers = async () => {
-      const response = await fetch('/api/users/getAllUsers', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      if (!token) {
+        toast.error('You are not authorized to view this page');
+        return;
+      }
+      const response = await apiFetch('/api/users/all', 'GET', token);
       const data = await response.json();
       setUsers(data);
     };
@@ -42,14 +43,11 @@ export default function AllUsersPage() {
       return;
     }
 
-    const response = await fetch('/api/users/updatePassword', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ username: userToUpdate, password })
-    });
+    if (!token) {
+      toast.error('You are not authorized to view this page');
+      return;
+    }
+    const response = await apiFetch('/api/users/updatePassword', 'POST', token, { username: userToUpdate, password })
 
     if (response.ok) {
       toast.success('Password updated successfully');
@@ -65,15 +63,14 @@ export default function AllUsersPage() {
     if (!userToDelete) return;
 
     const token = localStorage.getItem('token');
-    const response = await fetch(`/api/users/deleteUser?username=${userToDelete}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    if (!token) {
+      toast.error('You are not authorized to perform this action');
+      return;
+    }
+    const response = await apiFetch(`/api/users/deleteUser/${userToDelete}`, 'DELETE', token);
 
     if (response.ok) {
-      setUsers((prev) => prev.filter((user) => user.username !== userToDelete));
+      setUsers((prev) => prev.filter((user) => user !== userToDelete));
       toast.success('User deleted successfully');
     } else {
       toast.error('Failed to delete user');
@@ -117,18 +114,18 @@ export default function AllUsersPage() {
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.username}>
-                <td className="border border-gray-300 p-2">{user.username}</td>
+              <tr key={user}>
+                <td className="border border-gray-300 p-2">{user}</td>
                 <td className="border border-gray-300 p-2">
                   <div className="flex items-center">
                     <input
                       type="password"
-                      value={passwords[user.username] || ''}
-                      onChange={(e) => handlePasswordChange(user.username, e.target.value)}
+                      value={passwords[user] || ''}
+                      onChange={(e) => handlePasswordChange(user, e.target.value)}
                       className="border p-2 rounded w-full mr-2"
                     />
                     <button
-                      onClick={() => openUpdateModal(user.username)}
+                      onClick={() => openUpdateModal(user)}
                       className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
                     >
                       Update
@@ -137,7 +134,7 @@ export default function AllUsersPage() {
                 </td>
                 <td className="border border-gray-300 p-2">
                   <button
-                    onClick={() => openDeleteModal(user.username)}
+                    onClick={() => openDeleteModal(user)}
                     className="bg-red-500 hover:bg-red-700 text-white p-2 rounded"
                   >
                     Delete

@@ -6,14 +6,10 @@ import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { Ticket } from '@/common/interfaces';
-import { getLogger } from '@/lib/logger';
-import { getCorrelationId } from '@/utils/helpers';
 import { TICKET_STATUSES } from '@/common/constants';
 import partsData from '@/common/partslist.json';
+import { apiFetch } from '@/lib/api';
 
-let logger = getLogger();
-const correlationId = getCorrelationId();
-logger = logger.child({ correlationId });
 
 const TicketDetails = () => {
   const router = useRouter();
@@ -53,11 +49,7 @@ const TicketDetails = () => {
         }
 
         try {
-          const ticketResponse = await fetch(`/api/tickets?id=${ticketId}`, {
-            headers: {
-              'Authorization': `Bearer ${authToken}`,
-            },
-          });
+          const ticketResponse = await apiFetch(`/api/tickets/${ticketId}`, 'GET', authToken);
 
           if (ticketResponse.ok) {
             const ticketData = await ticketResponse.json();
@@ -68,7 +60,7 @@ const TicketDetails = () => {
             toast.error('Failed to fetch ticket details');
           }
         } catch (error) {
-          logger.error('Error fetching data:', error);
+          throw new Error('Failed to fetch ticket details:');
         } finally {
           setLoading(false);
         }
@@ -81,12 +73,6 @@ const TicketDetails = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setEditedTicket((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedImages((prevImages) => [...prevImages, ...Array.from(e.target.files || [])]);
-    }
   };
 
   const handleRemoveImage = (index: number) => {
@@ -143,44 +129,16 @@ const TicketDetails = () => {
         images: [...(editedTicket.images || []), ...base64Images],
       };
 
-      const ticketPromisse = fetch(`/api/tickets?id=${ticketId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(updatedTicket),
-      });
-
-      let timeEntryPromise;
-      if (updatedTicket.status !== 'Open' && updatedTicket.status !== 'New') {
-        timeEntryPromise = fetch('/api/time-entry', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            ticket: ticket?.ticketNumber,
-            user: ticket?.assignedTo,
-            endTime: new Date(),
-          }),
-        });
-      }
-
-      const [ticketResponse, timeEntryResponse] = await Promise.all([ticketPromisse, timeEntryPromise]);
-
-      if (ticketResponse.ok) {
+      const response = await apiFetch(`/api/tickets/${ticketId}`, 'POST', authToken, updatedTicket);
+      if (response.ok) {
         setLoading(false);
         toast.success('Ticket updated successfully');
         router.push('/tickets');
       } else {
         toast.error('Failed to update ticket ... Try again later');
-        logger.error('Error saving ticket:', ticketResponse);
       }
     } catch (error) {
       toast.error('Failed to update ticket ... Try again later');
-      logger.error('Error saving ticket:', error);
     }
   };
 
@@ -395,36 +353,26 @@ const TicketDetails = () => {
             className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Upload Images</label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleImageChange}
-            className="mb-2"
-          />
-          <div className="flex flex-wrap justify-center">
-            {selectedImages.map((image, index) => (
-              <div key={index} className="relative m-2">
-                <Image
-                  src={typeof image === 'string' ? image : URL.createObjectURL(image)}
-                  alt={`Uploaded ${index}`}
-                  width={128}
-                  height={128}
-                  className="object-cover cursor-pointer"
-                  onClick={() => handleImageClick(typeof image === 'string' ? image : URL.createObjectURL(image))}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveImage(index)}
-                  className="absolute top-0 right-0 bg-red-600 text-white p-1 rounded-full"
-                >
-                  &times;
-                </button>
-              </div>
-            ))}
-          </div>
+        <div className="mb-2 flex flex-wrap justify-center">
+          {selectedImages.map((image, index) => (
+            <div key={index} className="relative m-2">
+              <Image
+                src={typeof image === 'string' ? image : URL.createObjectURL(image)}
+                alt={`Uploaded ${index}`}
+                width={128}
+                height={128}
+                className="object-cover cursor-pointer"
+                onClick={() => handleImageClick(typeof image === 'string' ? image : URL.createObjectURL(image))}
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveImage(index)}
+                className="absolute top-0 right-0 bg-red-600 text-white p-1 rounded-full"
+              >
+                &times;
+              </button>
+            </div>
+          ))}
         </div>
         <div className="flex space-x-2">
           <button

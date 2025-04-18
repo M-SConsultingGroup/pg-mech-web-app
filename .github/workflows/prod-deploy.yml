@@ -30,23 +30,13 @@ jobs:
           # Pull the latest changes
           git pull origin main
 
-          # Create/update .env file
-          cat <<EOF > .env
-          MONGODB_URI=${{ secrets.MONGODB_CONN_STRING }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          NEXT_PUBLIC_SITE_NAME=${{ secrets.NEXT_PUBLIC_SITE_NAME }}
-          EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD }}
-          EOF
-
           # Build the Docker image with build args
-          sudo docker build --build-arg NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }} \
-                            --build-arg NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }} \
-                            -t pg-mech-app:latest .
+          sudo docker build --build-arg NEXT_PUBLIC_API_BASE_URL=https://pgmechanical.us -t pg-mech-web-app:latest .
 
           # Stop and remove any existing container
-          sudo docker stop pg-mech-app || true
-          sudo docker rm pg-mech-app || true
+          sudo docker stop pg-mech-web-app || true
+          sudo docker rm pg-mech-web-app || true
 
           # Run the new container
-          sudo docker run -d --name pg-mech-app --env-file .env -p 3000:3000 pg-mech-app:latest
+          sudo docker run -d --network=pg-mech-network --name pg-mech-web-app --env-file .env -p 8081:8081 pg-mech-web-app:latest
 

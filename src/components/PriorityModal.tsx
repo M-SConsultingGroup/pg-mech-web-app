@@ -1,5 +1,5 @@
 // PriorityModal.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Priority } from '@/common/interfaces';
 
 interface PriorityModalProps {

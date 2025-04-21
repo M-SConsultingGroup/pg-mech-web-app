@@ -23,7 +23,7 @@ export default function UserHoursPage() {
         router.push('/login');
         return;
       }
-      const response = await apiFetch(`/api/time-entry/{weekNumber}`, 'GET', token);
+      const response = await apiFetch(`/api/time-entry/${weekNumber}`, 'GET', undefined, token);
       const timeEntries: TimeEntry[] = await response.json();
 
       console.log(timeEntries);
@@ -57,7 +57,7 @@ export default function UserHoursPage() {
 
     const currentWeek = getWeekNumber(new Date());
     fetchTimeEntries(currentWeek - weekOffset);
-  }, [weekOffset]);
+  }, [router, weekOffset]);
 
   const toggleWeek = () => {
     setWeekOffset((prevOffset) => prevOffset + 1);

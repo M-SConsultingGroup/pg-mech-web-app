@@ -510,7 +510,6 @@ export default function Tickets() {
                         <TicketActions
                           ticket={ticket}
                           isAdmin={isAdmin}
-                          handlePhoneClick={handlePhoneClick}
                           handleRowDelete={handleRowDelete}
                         />
                       </div>
@@ -547,7 +546,6 @@ export default function Tickets() {
                           <TicketActions
                             ticket={ticket}
                             isAdmin={isAdmin}
-                            handlePhoneClick={handlePhoneClick}
                             handleRowDelete={handleRowDelete}
                           />
                         </div>

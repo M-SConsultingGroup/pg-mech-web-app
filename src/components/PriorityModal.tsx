@@ -1,13 +1,14 @@
+// PriorityModal.tsx
 import React, { useEffect, useState } from 'react';
 import { Priority } from '@/common/interfaces';
 
 interface PriorityModalProps {
   onSelectPriority: (priority: Priority) => void;
+  selectedPriority: Priority;
+  setSelectedPriority: (priority: Priority) => void;
 }
 
-const PriorityModal: React.FC<PriorityModalProps> = ({ onSelectPriority }) => {
-  const [selectedPriority, setSelectedPriority] = useState<Priority>('Medium');
-
+const PriorityModal: React.FC<PriorityModalProps> = ({ onSelectPriority, selectedPriority, setSelectedPriority}) => {
   useEffect(() => {
     setSelectedPriority('Medium');
   }, []);

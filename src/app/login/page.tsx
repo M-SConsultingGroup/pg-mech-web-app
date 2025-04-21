@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api';
 
@@ -10,6 +11,7 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
 
@@ -23,30 +25,24 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-  
+
     try {
-      const response = await apiFetch('/api/users/login', 'POST', '', { username, password });
+      const response = await apiFetch('/api/users/login', 'POST', { username, password });
+
+      if (response.status === 204) throw new Error('User not found');
+      else if (response.status === 401) throw new Error('Invalid password');
+      else if (response.status !== 200) throw new Error(response.statusText || 'Login failed, Please try again later');
+
       const data = await response.json();
-      setLoading(false);
-      if (response.ok) {
-        login(data.user, data.token);
-        toast.success('Login successful', {
-          className: 'text-xl',
-        });
-        router.push('/tickets');
-      } else {
-        throw new Error(data.error);
-      }
+      login(data.user, data.token);
+      toast.success('Login successful', { className: 'text-xl' });
+      router.push('/tickets');
     } catch (error) {
-      if (error instanceof Error && error.message === 'Invalid credentials') {
-        toast.error('Invalid Username or Password', {
-          className: 'text-xl',
-        });
-      } else {
-        toast.error('An error occurred, please try again', {
-          className: 'text-xl',
-        });
-      }
+      toast.error(error instanceof Error ? error.message : 'Login failed', {
+        className: 'text-xl',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,28 +61,34 @@ export default function Login() {
               required
             />
           </div>
-          <div className="mb-4">
+          <div className="mb-4 relative">
             <label className="block mb-2 text-gray-700">Password</label>
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="border p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 pr-10"
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+              </button>
+            </div>
           </div>
           <button
             type="submit"
             className="bg-blue-500 hover:bg-blue-700 text-white p-3 rounded shadow-lg transition duration-300 w-full"
+            disabled={loading}
           >
-            Login
+            {loading ? 'Logging in...' : 'Login'}
           </button>
-          {loading && (
-            <div className="loader-container">
-              <div className="loader"></div>
-            </div>
-          )}
         </form>
       </div>
     </div>

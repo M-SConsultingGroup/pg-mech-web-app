@@ -15,6 +15,7 @@ export default function Tickets() {
   const { username, isAdmin } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [users, setUsers] = useState<string[]>([]);
+  const [stats, setStats] = useState<{ [key: string]: number }>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<string | null>(isAdmin ? 'createdAt' : 'priority');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(isAdmin ? 'desc' : 'asc');
@@ -45,26 +46,38 @@ export default function Tickets() {
       return;
     }
 
+    console.log('Token:', token);
+    console.log('isAdmin:', isAdmin);
+    console.log('Username:', username);
+
     const fetchTickets = async () => {
       const queryParams = new URLSearchParams();
       if (statusFilter) queryParams.append('status', statusFilter);
       if (assignedToFilter) queryParams.append('user', assignedToFilter);
-      
-      const response = await apiFetch(`/api/tickets/all?${queryParams.toString()}`, 'GET', token);
+
+      const response = await apiFetch(`/api/tickets/all?${queryParams.toString()}`, 'GET', undefined, token);
       const data = await response.json();
       setTickets(data);
     };
 
     const fetchUsers = async () => {
-      const response = await apiFetch('/api/users/all', 'GET', token);
+      const response = await apiFetch('/api/users/all', 'GET', undefined, token);
       const data = await response.json();
       setUsers(data);
     };
 
-    const fetchData = async () => {
-      await Promise.all([fetchTickets(), fetchUsers()]);
+    const fetchStats = async () => {
+      const response = await apiFetch('/api/tickets/all', 'GET', undefined, token);
+      const data = await response.json();
+      setStats(data);
     };
 
+    const fetchData = async () => {
+      await Promise.all([fetchTickets(), fetchUsers(), fetchStats()]);
+      setLoading(false);
+    };
+
+    setLoading(true);
     fetchData();
   }, [router, statusFilter, assignedToFilter]);
 
@@ -121,7 +134,7 @@ export default function Tickets() {
           toast.error('You are not authorized to view this page');
           return;
         }
-        const response = await apiFetch(`/api/tickets/${ticket.id}`, 'DELETE', token);
+        const response = await apiFetch(`/api/tickets/${ticket.id}`, 'DELETE', undefined, token);
 
         if (response.ok) {
           setTickets((prev) => prev.filter((a) => a.id !== ticket.id));
@@ -140,7 +153,7 @@ export default function Tickets() {
   const openPriorityModal = (): Promise<Priority> => {
     return new Promise((resolve) => {
       const handleCloseModal = () => {
-        resolve('');
+        resolve('Medium');
         setModalProps({
           modalType: 'none',
           isOpen: false,
@@ -172,6 +185,7 @@ export default function Tickets() {
     if (ticket.status === 'New' && selectedUser !== 'Unassigned') {
       status = 'Open';
       selectedPriority = await openPriorityModal();
+      console.log(selectedPriority);
       if (selectedPriority === '') {
         return;
       }
@@ -194,7 +208,7 @@ export default function Tickets() {
       return;
     }
 
-    const response = await apiFetch(`/api/tickets/${ticket.id}`, 'POST', token, body);
+    const response = await apiFetch(`/api/tickets/${ticket.id}`, 'POST', body, token);
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
@@ -271,13 +285,13 @@ export default function Tickets() {
             </div>
 
             {/* New Tickets Card */}
-            <div 
+            <div
               className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 cursor-pointer"
               onClick={() => {
                 setStatusFilter('New');
                 setAssignedToFilter('');
               }}
-              >
+            >
               <h3 className="text-lg font-semibold text-yellow-800">New Tickets</h3>
               <p className="text-3xl font-bold text-yellow-600">
                 {tickets.filter(ticket => ticket.status === 'New').length}
@@ -296,8 +310,8 @@ export default function Tickets() {
                     <div
                       key={user}
                       className={`p-2 rounded cursor-pointer transition-colors ${assignedToFilter === user
-                          ? 'bg-green-200 border-green-300'
-                          : 'bg-white hover:bg-green-100 border-green-100'
+                        ? 'bg-green-200 border-green-300'
+                        : 'bg-white hover:bg-green-100 border-green-100'
                         }`}
                       onClick={() => {
                         setStatusFilter('');

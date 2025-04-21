@@ -19,7 +19,7 @@ export default function CreateUser() {
       return;
     }
     setLoading(true);
-    const response = await apiFetch('/api/users/create', 'POST', token, { username, password, isAdmin });
+    const response = await apiFetch('/api/users/create', 'POST', { username, password, isAdmin }, token);
     setLoading(false);
     if (response.ok) {
       toast.success('User created successfully');

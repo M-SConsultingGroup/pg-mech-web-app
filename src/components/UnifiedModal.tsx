@@ -25,10 +25,12 @@ const UnifiedModal: React.FC<UnifiedModalProps> = ({
   message,
 }) => {
   const [notes, setNotes] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState<Priority>('Medium');
 
   useEffect(() => {
     if (!isOpen) {
       setNotes('');
+      setSelectedPriority('Medium');
     }
   }, [isOpen]);
 
@@ -36,7 +38,12 @@ const UnifiedModal: React.FC<UnifiedModalProps> = ({
 
   if (modalType === 'priority' && onSelectPriority) {
     footerActions = (
-      <button onClick={() => onSelectPriority('Medium')} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+      <button onClick={() => {
+        onSelectPriority(selectedPriority);
+        onRequestClose();
+      }}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+      >
         Select
       </button>
     );
@@ -74,7 +81,11 @@ const UnifiedModal: React.FC<UnifiedModalProps> = ({
   return (
     <BaseModal isOpen={isOpen} onRequestClose={onRequestClose} title={message || 'Modal'} footerActions={footerActions}>
       {modalType === 'priority' && onSelectPriority && (
-        <PriorityModal onSelectPriority={onSelectPriority} />
+        <PriorityModal
+          onSelectPriority={onSelectPriority}
+          selectedPriority={selectedPriority}
+          setSelectedPriority={setSelectedPriority}
+        />
       )}
       {modalType === 'notes' && onSaveNotes && (
         <div>

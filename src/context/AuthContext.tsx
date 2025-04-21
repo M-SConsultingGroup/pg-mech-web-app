@@ -30,7 +30,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUsername('');
     setIsAdmin(false);
     localStorage.removeItem('token');
-    localStorage.removeItem('username');
     router.push('/login');
   }, [router]);
 
@@ -50,10 +49,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = (user: User, token: string) => {
     setIsLoggedIn(true);
-    setUsername(user.username);
-    setIsAdmin(user.isAdmin);
+    const decodedToken = jwtDecode<DecodedToken>(token);
+    setUsername(decodedToken.username);
+    setIsAdmin(decodedToken.isAdmin);
     localStorage.setItem('token', token);
-    localStorage.setItem('username', username);
   };
 
   return (

@@ -25,7 +25,7 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
         script: |
-          cd ~/pg-mech-app
+          cd ~/pg-mech-web-app
 
           # Pull the latest changes
           git pull origin main

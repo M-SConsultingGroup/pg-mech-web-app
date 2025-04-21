@@ -13,6 +13,9 @@ RUN npm install
 # Copy local code to the container image.
 COPY . .
 
+# Set environment variables for Next.js
+ENV NEXT_PUBLIC_API_BASE_URL=https://pgmechanical.us
+
 # Build the Next.js app
 RUN npm run build
 

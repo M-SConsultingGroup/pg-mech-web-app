@@ -159,7 +159,7 @@ export default function Tickets() {
           toast.error('You are not authorized to view this page');
           return;
         }
-        const response = await apiFetch(`/api/tickets/${ticket.id}`, 'DELETE', undefined, token);
+        const response = await apiFetch(`/api/tickets/${ticket.id}`, 'DELETE', {isAdmin: true}, token);
 
         if (response.ok) {
           setTickets((prev) => prev.filter((a) => a.id !== ticket.id));

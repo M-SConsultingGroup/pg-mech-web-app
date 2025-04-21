@@ -1,33 +1,33 @@
 "use client";
 import { useAuth } from '@/context/AuthContext';
-import { Ticket, Priority, priorityMap, ModalType } from '@/common/interfaces';
+import { Ticket, Priority, priorityMap, ModalType, UserStats } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import UnifiedModal from '@/components/UnifiedModal';
 import TicketActions from '@/components/TicketActions';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Modal from 'react-modal';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { apiFetch } from '@/lib/api';
 
 export default function Tickets() {
   const router = useRouter();
-  const { username, isAdmin } = useAuth();
+  const { username, isAdmin, isPermissionsLoading } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [users, setUsers] = useState<string[]>([]);
+  const [stats, setStats] = useState<{ [key: string]: number }>({ total: 0 });
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<string | null>(isAdmin ? 'createdAt' : 'priority');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(isAdmin ? 'desc' : 'asc');
+  const [sortField, setSortField] = useState<string | null>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [filter, setFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>(isAdmin ? 'New' : 'Open');
-  const [assignedToFilter, setAssignedToFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [assignedToFilter, setAssignedToFilter] = useState<string | undefined>(undefined);
   const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
   const [modalProps, setModalProps] = useState<{
     modalType: ModalType;
     isOpen: boolean;
     onSelectPriority?: (priority: Priority) => void;
-    onSaveNotes?: (notes: string) => void;
     phoneNumber?: string;
     onConfirm?: () => void;
     message?: string;
@@ -38,6 +38,15 @@ export default function Tickets() {
   });
 
   useEffect(() => {
+    if (!isPermissionsLoading) {
+      setStatusFilter(isAdmin ? 'New' : 'Open');
+      setAssignedToFilter(isAdmin ? '' : username);
+      setSortField(isAdmin ? 'createdAt' : 'priority');
+      setSortOrder(isAdmin ? 'desc' : 'asc');
+    }
+  }, [isPermissionsLoading, isAdmin, username]);
+
+  useEffect(() => {
     Modal.setAppElement('#table');
     const token = localStorage.getItem('token');
     if (!token) {
@@ -45,28 +54,57 @@ export default function Tickets() {
       return;
     }
 
+    const fetchInitialData = async () => {
+      setLoading(true);
+      try {
+        const [usersResponse, statsResponse] = await Promise.all([
+          apiFetch('/api/users/all', 'GET', undefined, token),
+          apiFetch('/api/tickets/stats', 'GET', undefined, token)
+        ]);
+
+        setUsers(await usersResponse.json());
+        setStats(await statsResponse.json());
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, [router]);
+
+  useEffect(() => {
+    if (statusFilter === undefined || assignedToFilter === undefined) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     const fetchTickets = async () => {
-      const queryParams = new URLSearchParams();
-      if (statusFilter) queryParams.append('status', statusFilter);
-      if (assignedToFilter) queryParams.append('user', assignedToFilter);
-      
-      const response = await apiFetch(`/api/tickets/all?${queryParams.toString()}`, 'GET', token);
-      const data = await response.json();
-      setTickets(data);
+      setLoading(true);
+      try {
+        const queryParams = new URLSearchParams();
+        if (statusFilter) queryParams.append('status', statusFilter);
+        if (assignedToFilter) queryParams.append('user', assignedToFilter);
+
+        const response = await apiFetch(
+          `/api/tickets/all?${queryParams.toString()}`,
+          'GET',
+          undefined,
+          token
+        );
+        setTickets(await response.json());
+      } catch (error) {
+        console.error('Error fetching tickets:', error);
+        toast.error('Failed to load tickets');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const fetchUsers = async () => {
-      const response = await apiFetch('/api/users/all', 'GET', token);
-      const data = await response.json();
-      setUsers(data);
-    };
-
-    const fetchData = async () => {
-      await Promise.all([fetchTickets(), fetchUsers()]);
-    };
-
-    fetchData();
-  }, [router, statusFilter, assignedToFilter]);
+    const debounceTimer = setTimeout(fetchTickets, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [statusFilter, assignedToFilter, assignedUsers]);
 
   const handlePhoneClick = async (phoneNumber: string) => {
     setModalProps({
@@ -121,7 +159,7 @@ export default function Tickets() {
           toast.error('You are not authorized to view this page');
           return;
         }
-        const response = await apiFetch(`/api/tickets/${ticket.id}`, 'DELETE', token);
+        const response = await apiFetch(`/api/tickets/${ticket.id}`, 'DELETE', undefined, token);
 
         if (response.ok) {
           setTickets((prev) => prev.filter((a) => a.id !== ticket.id));
@@ -140,7 +178,7 @@ export default function Tickets() {
   const openPriorityModal = (): Promise<Priority> => {
     return new Promise((resolve) => {
       const handleCloseModal = () => {
-        resolve('');
+        resolve('Medium');
         setModalProps({
           modalType: 'none',
           isOpen: false,
@@ -172,6 +210,7 @@ export default function Tickets() {
     if (ticket.status === 'New' && selectedUser !== 'Unassigned') {
       status = 'Open';
       selectedPriority = await openPriorityModal();
+      console.log(selectedPriority);
       if (selectedPriority === '') {
         return;
       }
@@ -194,7 +233,7 @@ export default function Tickets() {
       return;
     }
 
-    const response = await apiFetch(`/api/tickets/${ticket.id}`, 'POST', token, body);
+    const response = await apiFetch(`/api/tickets/${ticket.id}`, 'POST', body, token);
     if (response.ok) {
       const updatedTicket = await response.json();
       setTickets((prev) =>
@@ -263,53 +302,72 @@ export default function Tickets() {
       {/* Overview */}{isAdmin && (
         <div className="w-full bg-white p-4 rounded-lg shadow-lg mb-4">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Dashboard Overview</h1>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Total Tickets Card */}
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
               <h3 className="text-lg font-semibold text-blue-800">Total Tickets</h3>
-              <p className="text-3xl font-bold text-blue-600">{tickets.length}</p>
+              <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
             </div>
 
             {/* New Tickets Card */}
-            <div 
+            <div
               className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 cursor-pointer"
               onClick={() => {
                 setStatusFilter('New');
                 setAssignedToFilter('');
               }}
-              >
+            >
               <h3 className="text-lg font-semibold text-yellow-800">New Tickets</h3>
-              <p className="text-3xl font-bold text-yellow-600">
-                {tickets.filter(ticket => ticket.status === 'New').length}
-              </p>
+              <p className="text-3xl font-bold text-yellow-600">{stats.new || 0}</p>
             </div>
 
-            {/* User Stats */}
-            <div className="bg-green-50 p-4 rounded-lg border border-green-100 col-span-1 sm:col-span-2 lg:col-span-2">
+            {/* Open Tickets Card */}
+            <div
+              className="bg-orange-50 p-4 rounded-lg border border-orange-100 cursor-pointer"
+              onClick={() => {
+                setStatusFilter('Open');
+                setAssignedToFilter('');
+              }}
+            >
+              <h3 className="text-lg font-semibold text-orange-800">Open Tickets</h3>
+              <p className="text-3xl font-bold text-orange-600">{stats.open || 0}</p>
+            </div>
+
+            {/* Team Stats - now spans all columns on larger screens */}
+            <div className="bg-green-50 p-4 rounded-lg border border-green-100 col-span-1 sm:col-span-2 lg:col-span-3">
               <h3 className="text-lg font-semibold text-green-800 mb-2">Team Stats</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {users.map((user) => {
-                  const userTickets = tickets.filter(ticket => ticket.assignedTo === user);
-                  const openTickets = userTickets.filter(ticket => ticket.status === 'Open').length;
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {Object.entries(stats).map(([key, value]) => {
+                  // Skip non-user stats (total, new, open)
+                  if (['total', 'new', 'open'].includes(key) || typeof value !== 'object') return null;
+
+                  const userStats = value as { total: number; new?: number; open?: number };
+                  const openTickets = userStats.open || 0;
+                  const newTickets = userStats.new || 0;
 
                   return (
                     <div
-                      key={user}
-                      className={`p-2 rounded cursor-pointer transition-colors ${assignedToFilter === user
-                          ? 'bg-green-200 border-green-300'
-                          : 'bg-white hover:bg-green-100 border-green-100'
+                      key={key}
+                      className={`p-2 rounded cursor-pointer transition-colors ${assignedToFilter === key
+                        ? 'bg-green-200 border-green-300'
+                        : 'bg-white hover:bg-green-100 border-green-100'
                         }`}
                       onClick={() => {
                         setStatusFilter('');
-                        setAssignedToFilter(assignedToFilter === user ? '' : user);
+                        setAssignedToFilter(assignedToFilter === key ? '' : key);
                       }}
                     >
-                      <p className="font-medium text-sm truncate">{user}</p>
+                      <p className="font-medium text-sm truncate">{key}</p>
                       <p className="text-xs text-gray-600">
-                        <span className="font-semibold">{userTickets.length}</span> tickets
+                        <span className="font-semibold">{userStats.total}</span> tickets
                       </p>
-                      {openTickets > 0 && (
+                      {newTickets > 0 && (
                         <p className="text-xs text-yellow-600">
+                          <span className="font-semibold">{newTickets}</span> new
+                        </p>
+                      )}
+                      {openTickets > 0 && (
+                        <p className="text-xs text-orange-600">
                           <span className="font-semibold">{openTickets}</span> open
                         </p>
                       )}
@@ -452,7 +510,6 @@ export default function Tickets() {
                         <TicketActions
                           ticket={ticket}
                           isAdmin={isAdmin}
-                          handlePhoneClick={handlePhoneClick}
                           handleRowDelete={handleRowDelete}
                         />
                       </div>
@@ -489,7 +546,6 @@ export default function Tickets() {
                           <TicketActions
                             ticket={ticket}
                             isAdmin={isAdmin}
-                            handlePhoneClick={handlePhoneClick}
                             handleRowDelete={handleRowDelete}
                           />
                         </div>
@@ -511,7 +567,6 @@ export default function Tickets() {
           modalType={modalProps.modalType}
           onRequestClose={() => setModalProps({ modalType: 'none', isOpen: false })}
           onSelectPriority={modalProps.onSelectPriority}
-          onSaveNotes={modalProps.onSaveNotes}
           phoneNumber={modalProps.phoneNumber}
           onConfirm={modalProps.onConfirm}
           message={modalProps.message}

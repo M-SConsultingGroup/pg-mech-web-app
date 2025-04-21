@@ -30,7 +30,7 @@ export default function RootLayout({ children }: Readonly<{
         <Toaster />
         <AuthProvider>
           <Navbar />
-          <main>
+          <main id="__next">
             {children}
           </main>
         </AuthProvider>

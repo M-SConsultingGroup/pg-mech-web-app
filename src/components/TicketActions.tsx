@@ -1,32 +1,43 @@
 import React from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Ticket } from '@/common/interfaces';
+import { FaEdit, FaTrash, FaPrint } from 'react-icons/fa';
 
 interface TicketActionsProps {
   ticket: Ticket;
   isAdmin: boolean;
-  handlePhoneClick: (phoneNumber: string, serviceAddress: string) => void;
   handleRowDelete: (ticket: Ticket) => void;
 }
 
-const TicketActions: React.FC<TicketActionsProps> = ({ ticket, isAdmin, handlePhoneClick, handleRowDelete }) => {
+const TicketActions: React.FC<TicketActionsProps> = ({ ticket, isAdmin, handleRowDelete }) => {
   const router = useRouter();
 
   return (
-    <>
-      <button onClick={() => router.push(`/tickets/${ticket.id}`)} className="bg-yellow-500 p-1 rounded flex">
-        <Image src="/edit-pen.svg" alt="Edit" width={25} height={25} />
+    <div className="flex space-x-2">
+      <button
+        onClick={() => router.push(`/tickets/${ticket.id}`)}
+        className="bg-yellow-500 p-1 rounded flex items-center justify-center text-white hover:bg-yellow-600 transition-colors"
+        aria-label="Edit ticket"
+      >
+        <FaEdit size={16} />
       </button>
-      <button onClick={() => handlePhoneClick(ticket.phoneNumber, ticket.serviceAddress)} className="bg-gray-500 p-1 rounded flex">
-        <Image src="/phone-call.svg" alt="Phone" width={25} height={25} />
+      <button
+        onClick={() => router.push(`/tickets/${ticket.id}/invoice`)}
+        className="bg-blue-500 p-1 rounded flex items-center justify-center text-white hover:bg-blue-600 transition-colors"
+        aria-label="Print invoice"
+      >
+        <FaPrint size={16} />
       </button>
       {isAdmin && (
-        <button onClick={() => handleRowDelete(ticket)} className="border border-gray-500 p-1 rounded flex">
-          <Image src="/trash-bin-red.svg" alt="Delete" width={25} height={25} />
+        <button
+          onClick={() => handleRowDelete(ticket)}
+          className="border border-red-500 p-1 rounded flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
+          aria-label="Delete ticket"
+        >
+          <FaTrash size={16} />
         </button>
       )}
-    </>
+    </div>
   );
 };
 

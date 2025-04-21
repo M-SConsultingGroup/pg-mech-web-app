@@ -4,10 +4,10 @@ import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Ticket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
-import partsData from '@/common/partslist.json';
+import partsData from '@/common/partslist.json' assert { type: 'json' };
 import { apiFetch } from '@/lib/api';
 
 
@@ -49,7 +49,7 @@ const TicketDetails = () => {
         }
 
         try {
-          const ticketResponse = await apiFetch(`/api/tickets/${ticketId}`, 'GET', authToken);
+          const ticketResponse = await apiFetch(`/api/tickets/${ticketId}`, 'GET', undefined, authToken);
 
           if (ticketResponse.ok) {
             const ticketData = await ticketResponse.json();
@@ -129,7 +129,7 @@ const TicketDetails = () => {
         images: [...(editedTicket.images || []), ...base64Images],
       };
 
-      const response = await apiFetch(`/api/tickets/${ticketId}`, 'POST', authToken, updatedTicket);
+      const response = await apiFetch(`/api/tickets/${ticketId}`, 'POST', updatedTicket, authToken);
       if (response.ok) {
         setLoading(false);
         toast.success('Ticket updated successfully');

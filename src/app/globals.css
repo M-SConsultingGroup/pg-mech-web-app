@@ -74,3 +74,29 @@
     transform: rotate(360deg);
   }
 }
+
+@media print {
+  body {
+    background: white;
+    font-size: 12pt;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  button {
+    display: none !important;
+  }
+  
+  input {
+    border: none !important;
+    background: transparent !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  input:focus {
+    outline: none;
+  }
+}

@@ -65,3 +65,13 @@ export const priorityMap: { [key in Priority]: number | null } = {
   'Lowest': 5,
   '': null,
 };
+
+export interface StatsData {
+  total: number;
+  [key: string]: number | UserStats;
+}
+
+export interface UserStats {
+  total: number;
+  [key: string]: number;
+}

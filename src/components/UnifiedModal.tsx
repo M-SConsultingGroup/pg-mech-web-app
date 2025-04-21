@@ -8,7 +8,6 @@ interface UnifiedModalProps {
   modalType: ModalType;
   onRequestClose: () => void;
   onSelectPriority?: (priority: Priority) => void;
-  onSaveNotes?: (notes: string) => void;
   phoneNumber?: string;
   onConfirm?: () => void;
   message?: string;
@@ -19,17 +18,14 @@ const UnifiedModal: React.FC<UnifiedModalProps> = ({
   modalType,
   onRequestClose,
   onSelectPriority,
-  onSaveNotes,
   phoneNumber,
   onConfirm,
   message,
 }) => {
-  const [notes, setNotes] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<Priority>('Medium');
 
   useEffect(() => {
     if (!isOpen) {
-      setNotes('');
       setSelectedPriority('Medium');
     }
   }, [isOpen]);
@@ -45,12 +41,6 @@ const UnifiedModal: React.FC<UnifiedModalProps> = ({
         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
       >
         Select
-      </button>
-    );
-  } else if (modalType === 'notes' && onSaveNotes) {
-    footerActions = (
-      <button onClick={() => onSaveNotes(notes)} className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded">
-        Save
       </button>
     );
   } else if (modalType === 'popup' && phoneNumber) {
@@ -86,16 +76,6 @@ const UnifiedModal: React.FC<UnifiedModalProps> = ({
           selectedPriority={selectedPriority}
           setSelectedPriority={setSelectedPriority}
         />
-      )}
-      {modalType === 'notes' && onSaveNotes && (
-        <div>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full p-2 border rounded mb-4"
-            rows={4}
-          />
-        </div>
       )}
     </BaseModal>
   );

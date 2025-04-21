@@ -1,5 +1,4 @@
 'use client';
-import { User } from '@/common/interfaces';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import UnifiedModal from '@/components/UnifiedModal';
@@ -10,7 +9,6 @@ export default function AllUsersPage() {
   const [passwords, setPasswords] = useState<{ [key: string]: string }>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
-  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [userToUpdate, setUserToUpdate] = useState<string | null>(null);
 
@@ -21,7 +19,7 @@ export default function AllUsersPage() {
         toast.error('You are not authorized to view this page');
         return;
       }
-      const response = await apiFetch('/api/users/all', 'GET', token);
+      const response = await apiFetch('/api/users/all', 'GET', undefined, token);
       const data = await response.json();
       setUsers(data);
     };
@@ -47,7 +45,7 @@ export default function AllUsersPage() {
       toast.error('You are not authorized to view this page');
       return;
     }
-    const response = await apiFetch('/api/users/updatePassword', 'POST', token, { username: userToUpdate, password })
+    const response = await apiFetch('/api/users/updatePassword', 'POST', { username: userToUpdate, password }, token);
 
     if (response.ok) {
       toast.success('Password updated successfully');
@@ -67,7 +65,7 @@ export default function AllUsersPage() {
       toast.error('You are not authorized to perform this action');
       return;
     }
-    const response = await apiFetch(`/api/users/deleteUser/${userToDelete}`, 'DELETE', token);
+    const response = await apiFetch(`/api/users/${userToDelete}`, 'DELETE', undefined, token);
 
     if (response.ok) {
       setUsers((prev) => prev.filter((user) => user !== userToDelete));
@@ -83,14 +81,12 @@ export default function AllUsersPage() {
   const openDeleteModal = (username: string) => {
     setUserToDelete(username);
     setModalMessage('Are you sure you want to delete this user?');
-    setConfirmAction(() => handleDeleteUser);
     setIsModalOpen(true);
   };
 
   const openUpdateModal = (username: string) => {
     setUserToUpdate(username);
     setModalMessage('Are you sure you want to update the password for this user?');
-    setConfirmAction(() => handleUpdatePassword);
     setIsModalOpen(true);
   };
 
@@ -98,6 +94,14 @@ export default function AllUsersPage() {
     setIsModalOpen(false);
     setUserToDelete(null);
     setUserToUpdate(null);
+  };
+
+  const handleConfirm = () => {
+    if (userToDelete) {
+      handleDeleteUser();
+    } else if (userToUpdate) {
+      handleUpdatePassword();
+    }
   };
 
   return (
@@ -149,7 +153,7 @@ export default function AllUsersPage() {
         isOpen={isModalOpen}
         modalType="confirmation"
         onRequestClose={closeModal}
-        onConfirm={confirmAction}
+        onConfirm={handleConfirm}
         message={modalMessage}
       />
     </div>

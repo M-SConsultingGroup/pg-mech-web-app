@@ -1,6 +1,10 @@
 import React from 'react';
 import Modal from 'react-modal';
 
+if (typeof window !== 'undefined') {
+  Modal.setAppElement('#__next');
+}
+
 interface BaseModalProps {
   isOpen: boolean;
   onRequestClose: () => void;

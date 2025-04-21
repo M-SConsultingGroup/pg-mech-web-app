@@ -4,10 +4,10 @@ import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Ticket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
-import partsData from '@/common/partslist.json';
+import partsData from '@/common/partslist.json' assert { type: 'json' };
 import { apiFetch } from '@/lib/api';
 
 

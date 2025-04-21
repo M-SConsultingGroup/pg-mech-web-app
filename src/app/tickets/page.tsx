@@ -7,7 +7,7 @@ import TicketActions from '@/components/TicketActions';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Modal from 'react-modal';
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 
 export default function Tickets() {
@@ -341,7 +341,7 @@ export default function Tickets() {
                   // Skip non-user stats (total, new, open)
                   if (['total', 'new', 'open'].includes(key) || typeof value !== 'object') return null;
 
-                  const userStats = value as { total: number; new?: number; open?: number };
+                  const userStats = value as UserStats;
                   const openTickets = userStats.open || 0;
                   const newTickets = userStats.new || 0;
 

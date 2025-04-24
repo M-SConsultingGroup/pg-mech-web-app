@@ -13,7 +13,18 @@ const InvoicePage = () => {
 	const [loading, setLoading] = useState(false);
 	const [partPrices, setPartPrices] = useState<Record<string, number>>({});
 	const [laborCost, setLaborCost] = useState(0);
-	const [taxRate, setTaxRate] = useState(0.0825); // 8.25% tax
+	const [isSendingToSquare, setIsSendingToSquare] = useState(false);
+	const [squareStatus, setSquareStatus] = useState('');
+
+	// New state for payment methods and warranties
+	const [paymentMethods, setPaymentMethods] = useState({
+		card: true,
+		bankAccount: false
+	});
+	const [warranties, setWarranties] = useState({
+		labor: false,
+		manufacture: false
+	});
 
 	useEffect(() => {
 		if (ticketId) {
@@ -30,7 +41,6 @@ const InvoicePage = () => {
 					if (ticketResponse.ok) {
 						const ticketData = await ticketResponse.json();
 						setTicket(ticketData);
-						// Initialize part prices with 0
 						const initialPrices: Record<string, number> = {};
 						ticketData.partsUsed?.forEach((part: string) => {
 							initialPrices[part] = 0;
@@ -59,16 +69,63 @@ const InvoicePage = () => {
 		return partsTotal + laborCost;
 	};
 
-	const calculateTax = () => {
-		return calculateSubtotal() * taxRate;
-	};
-
-	const calculateTotal = () => {
-		return calculateSubtotal() + calculateTax();
-	};
-
 	const handlePrint = () => {
 		window.print();
+	};
+
+	const sendToSquare = async () => {
+		setIsSendingToSquare(true);
+		setSquareStatus('Saving to Square as draft...');
+
+		try {
+			const authToken = localStorage.getItem('token');
+			if (!authToken) {
+				throw new Error('Not authenticated');
+			}
+
+			// Prepare invoice data with new fields
+			const invoiceData = {
+				ticket,
+				lineItems: [
+					...(ticket?.partsUsed?.map(part => ({
+						name: part,
+						quantity: 1,
+						price: partPrices[part] || 0
+					})) || []),
+					...(warranties.labor ? [{
+						name: 'Labor Warranty',
+						quantity: 1,
+						price: 0,
+						notes: '1 Year Labor Warranty Included'
+					}] : []),
+					...(warranties.manufacture ? [{
+						name: 'Manufacture Warranty',
+						quantity: 1,
+						price: 0,
+						notes: 'Please Register Warranty on the following link: \n pgmechanical.us/warranty'
+					}] : [])
+				],
+				payment: paymentMethods,
+			};
+
+			const response = await apiFetch('/api/square/create-invoice', 'POST', invoiceData, authToken);
+
+			if (response.ok) {
+				const result = await response.json();
+				setSquareStatus('Invoice saved as draft in Square successfully!');
+				if (result.invoiceUrl) {
+					window.open(result.invoiceUrl, '_blank');
+				}
+			} else {
+				const error = await response.json();
+				throw new Error(error.message || 'Failed to save to Square');
+			}
+		} catch (error) {
+			console.error('Error saving to Square:', error);
+			setSquareStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		} finally {
+			setIsSendingToSquare(false);
+		}
 	};
 
 	if (loading) return <div className="text-center py-8">Loading...</div>;
@@ -120,6 +177,31 @@ const InvoicePage = () => {
 					<p><span className="font-medium">Additional Notes:</span> {ticket.additionalNotes}</p>
 				</div>
 
+				{/* Payment Methods */}
+				<div className="mb-4">
+					<h3 className="text-lg font-semibold mb-2">Accepted Payment Methods</h3>
+					<div className="flex space-x-4">
+						<label className="flex items-center">
+							<input
+								type="checkbox"
+								checked={paymentMethods.card}
+								onChange={(e) => setPaymentMethods({ ...paymentMethods, card: e.target.checked })}
+								className="mr-2"
+							/>
+							Credit/Debit Card
+						</label>
+						<label className="flex items-center">
+							<input
+								type="checkbox"
+								checked={paymentMethods.bankAccount}
+								onChange={(e) => setPaymentMethods({ ...paymentMethods, bankAccount: e.target.checked })}
+								className="mr-2"
+							/>
+							Bank Account
+						</label>
+					</div>
+				</div>
+
 				{/* Parts and Labor */}
 				<div className="mb-8">
 					<h3 className="text-lg font-semibold mb-4">Parts & Labor</h3>
@@ -163,19 +245,36 @@ const InvoicePage = () => {
 					</table>
 				</div>
 
-				{/* Totals */}
+				{/* Warranties Section */}
+				<div className="mb-8">
+					<h3 className="text-lg font-semibold mb-2">Warranties</h3>
+					<div className="space-y-2">
+						<label className="flex items-center">
+							<input
+								type="checkbox"
+								checked={warranties.labor}
+								onChange={(e) => setWarranties({ ...warranties, labor: e.target.checked })}
+								className="mr-2"
+							/>
+							Add Labor Warranty (pgmechanical.us/warranty)
+						</label>
+						<label className="flex items-center">
+							<input
+								type="checkbox"
+								checked={warranties.manufacture}
+								onChange={(e) => setWarranties({ ...warranties, manufacture: e.target.checked })}
+								className="mr-2"
+							/>
+							Add Manufacture Warranty (pgmechanical.us/warranty)
+						</label>
+					</div>
+				</div>
+
+				{/* Totals (simplified without tax) */}
 				<div className="ml-auto w-64 border-t-2 pt-4">
-					<div className="flex justify-between mb-2">
-						<span className="font-medium">Subtotal:</span>
-						<span>${calculateSubtotal().toFixed(2)}</span>
-					</div>
-					<div className="flex justify-between mb-2">
-						<span className="font-medium">Tax ({taxRate * 100}%):</span>
-						<span>${calculateTax().toFixed(2)}</span>
-					</div>
 					<div className="flex justify-between text-lg font-bold">
 						<span>Total:</span>
-						<span>${calculateTotal().toFixed(2)}</span>
+						<span>${calculateSubtotal().toFixed(2)}</span>
 					</div>
 				</div>
 
@@ -193,15 +292,27 @@ const InvoicePage = () => {
 					</div>
 				</div>
 
-				{/* Print Button (hidden when printing) */}
+				{/* Print and Save Buttons */}
 				<div className="mt-8 text-center print:hidden">
 					<button
 						onClick={handlePrint}
-						className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+						className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded mr-4"
 					>
 						Print Invoice
 					</button>
+					<button
+						onClick={sendToSquare}
+						disabled={isSendingToSquare}
+						className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded disabled:bg-green-400"
+					>
+						{isSendingToSquare ? 'Saving...' : 'Save to Square as Draft'}
+					</button>
 				</div>
+				{squareStatus && (
+					<div className={`mt-4 text-center ${squareStatus.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
+						{squareStatus}
+					</div>
+				)}
 			</div>
 		</div>
 	);

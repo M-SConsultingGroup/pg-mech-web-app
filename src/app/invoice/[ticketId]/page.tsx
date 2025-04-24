@@ -2,6 +2,7 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Ticket } from '@/common/interfaces';
 import { apiFetch } from '@/lib/api';
 
@@ -81,6 +82,11 @@ const InvoicePage = () => {
 			const authToken = localStorage.getItem('token');
 			if (!authToken) {
 				throw new Error('Not authenticated');
+			}
+
+			if (!ticket?.additionalNotes || ticket.additionalNotes.trim() === '') {
+				toast.error('Please add notes before saving to Square');
+				return;
 			}
 
 			// Prepare invoice data with new fields
@@ -256,7 +262,7 @@ const InvoicePage = () => {
 								onChange={(e) => setWarranties({ ...warranties, labor: e.target.checked })}
 								className="mr-2"
 							/>
-							Add Labor Warranty (pgmechanical.us/warranty)
+							Add Labor Warranty
 						</label>
 						<label className="flex items-center">
 							<input
@@ -265,7 +271,7 @@ const InvoicePage = () => {
 								onChange={(e) => setWarranties({ ...warranties, manufacture: e.target.checked })}
 								className="mr-2"
 							/>
-							Add Manufacture Warranty (pgmechanical.us/warranty)
+							Add Manufacture Warranty
 						</label>
 					</div>
 				</div>

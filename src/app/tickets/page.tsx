@@ -1,29 +1,34 @@
 "use client";
 import { useAuth } from '@/context/AuthContext';
+import { useTicketFilters } from '@/context/TicketFilterContext';
 import { Ticket, Priority, priorityMap, ModalType, UserStats } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import UnifiedModal from '@/components/UnifiedModal';
 import TicketActions from '@/components/TicketActions';
+import { apiFetch } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Modal from 'react-modal';
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '@/lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export default function Tickets() {
   const router = useRouter();
-  const { username, isAdmin, isPermissionsLoading } = useAuth();
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [users, setUsers] = useState<string[]>([]);
-  const [stats, setStats] = useState<{ [key: string]: number }>({ total: 0 });
+  const queryClient = useQueryClient();
+  const { username, isAdmin } = useAuth();
+  const {
+    statusFilter,
+    setStatusFilter,
+    assignedToFilter,
+    setAssignedToFilter,
+    highlightedTicket,
+    setHighlightedTicket
+  } = useTicketFilters();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<string | null>('createdAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<string>(isAdmin ? 'createdAt' : 'priority');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(isAdmin ? 'desc' : 'asc');
   const [filter, setFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const [assignedToFilter, setAssignedToFilter] = useState<string | undefined>(undefined);
   const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
-  const [loading, setLoading] = useState(false);
   const [modalProps, setModalProps] = useState<{
     modalType: ModalType;
     isOpen: boolean;
@@ -38,73 +43,91 @@ export default function Tickets() {
   });
 
   useEffect(() => {
-    if (!isPermissionsLoading) {
-      setStatusFilter(isAdmin ? 'New' : 'Open');
-      setAssignedToFilter(isAdmin ? '' : username);
-      setSortField(isAdmin ? 'createdAt' : 'priority');
-      setSortOrder(isAdmin ? 'desc' : 'asc');
-    }
-  }, [isPermissionsLoading, isAdmin, username]);
-
-  useEffect(() => {
     Modal.setAppElement('#table');
     const token = localStorage.getItem('token');
     if (!token) {
       router.push('/login');
       return;
     }
-
-    const fetchInitialData = async () => {
-      setLoading(true);
-      try {
-        const [usersResponse, statsResponse] = await Promise.all([
-          apiFetch('/api/users/all', 'GET', undefined, token),
-          apiFetch('/api/tickets/stats', 'GET', undefined, token)
-        ]);
-
-        setUsers(await usersResponse.json());
-        setStats(await statsResponse.json());
-      } catch (error) {
-        console.error('Error loading initial data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInitialData();
   }, [router]);
 
-  useEffect(() => {
-    if (statusFilter === undefined || assignedToFilter === undefined) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    const fetchTickets = async () => {
-      setLoading(true);
-      try {
-        const queryParams = new URLSearchParams();
-        if (statusFilter) queryParams.append('status', statusFilter);
-        if (assignedToFilter) queryParams.append('user', assignedToFilter);
-
-        const response = await apiFetch(
-          `/api/tickets/all?${queryParams.toString()}`,
-          'GET',
-          undefined,
-          token
-        );
-        setTickets(await response.json());
-      } catch (error) {
-        console.error('Error fetching tickets:', error);
-        toast.error('Failed to load tickets');
-      } finally {
-        setLoading(false);
+  const { data: tickets = [], isLoading: isTicketsLoading } = useQuery<Ticket[]>({
+    queryKey: ['tickets', statusFilter, assignedToFilter],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return [];
       }
-    };
 
-    const debounceTimer = setTimeout(fetchTickets, 300);
-    return () => clearTimeout(debounceTimer);
-  }, [statusFilter, assignedToFilter, assignedUsers]);
+      const queryParams = new URLSearchParams();
+      if (statusFilter) queryParams.append('status', statusFilter);
+      if (assignedToFilter) queryParams.append('user', assignedToFilter);
+
+      const response = await apiFetch(
+        `/api/tickets/all?${queryParams.toString()}`,
+        'GET',
+        undefined,
+        token
+      );
+      return await response.json();
+    },
+  });
+
+  const { data: users = [] } = useQuery<string[]>({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return [];
+      const response = await apiFetch('/api/users/all', 'GET', undefined, token);
+      return await response.json();
+    },
+  });
+
+  const { data: stats = { total: 0 } } = useQuery<{ [key: string]: number }>({
+    queryKey: ['stats'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return { total: 0 };
+      const response = await apiFetch('/api/tickets/stats', 'GET', undefined, token);
+      return await response.json();
+    },
+  });
+
+  const updateTicketMutation = useMutation({
+    mutationFn: async (body: {
+      ticketId: string;
+      assignedTo: string;
+      priority: string;
+      status: string;
+    }) => {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error("Unauthorized");
+      return apiFetch(`/api/tickets/${body.ticketId}`, 'POST', body, token);
+    },
+    onSuccess: () => {
+      toast.success("Ticket updated successfully");
+      queryClient.invalidateQueries({ queryKey: ['tickets'] }); // Refetch tickets
+    },
+    onError: () => {
+      toast.error("Failed to update ticket");
+    },
+  });
+
+  const deleteTicketMutation = useMutation({
+    mutationFn: async (ticketId: string) => {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error("Unauthorized");
+      return apiFetch(`/api/tickets/${ticketId}`, 'DELETE', { isAdmin: true }, token);
+    },
+    onSuccess: () => {
+      toast.success("Ticket deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    },
+    onError: () => {
+      toast.error("Failed to delete ticket");
+    },
+  });
 
   const handlePhoneClick = async (phoneNumber: string) => {
     setModalProps({
@@ -146,32 +169,15 @@ export default function Tickets() {
   };
 
   const handleRowDelete = async (ticket: Ticket) => {
-    const message = ticket.inProgress ? `This ticket is in-progress by ${ticket.assignedTo}, are you sure? `
+    const message = ticket.inProgress
+      ? `This ticket is in-progress by ${ticket.assignedTo}, are you sure?`
       : 'Are you sure you want to delete this ticket?';
-    console.log(message);
+
     setModalProps({
       modalType: 'confirmation',
       isOpen: true,
-      message: message,
-      onConfirm: async () => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          toast.error('You are not authorized to view this page');
-          return;
-        }
-        const response = await apiFetch(`/api/tickets/${ticket.id}`, 'DELETE', {isAdmin: true}, token);
-
-        if (response.ok) {
-          setTickets((prev) => prev.filter((a) => a.id !== ticket.id));
-          toast.success('Ticket deleted successfully');
-        } else {
-          toast.error('Failed to delete ticket');
-        }
-        setModalProps({
-          modalType: 'none',
-          isOpen: false,
-        });
-      },
+      message,
+      onConfirm: () => deleteTicketMutation.mutate(ticket.id!),
     });
   };
 
@@ -202,53 +208,24 @@ export default function Tickets() {
   };
 
   const handleAssignedUserChange = async (ticket: Ticket, selectedUser: string) => {
-    const previousUser = assignedUsers[ticket.id];
-    const token = localStorage.getItem('token');
-    let status = '';
-    let selectedPriority = '';
+    const previousUser = assignedUsers[ticket.id!];
+    let status = ticket.status;
+    let selectedPriority = ticket.priority;
 
-    if (ticket.status === 'New' && selectedUser !== 'Unassigned') {
+    if (ticket.status === 'New' && selectedUser !== 'Unassigned' && previousUser != '') {
       status = 'Open';
       selectedPriority = await openPriorityModal();
-      console.log(selectedPriority);
-      if (selectedPriority === '') {
-        return;
-      }
+      if (!selectedPriority) return;
     }
 
-    setAssignedUsers((prev) => ({
-      ...prev,
-      [ticket.id]: selectedUser,
-    }));
+    setAssignedUsers((prev) => ({ ...prev, [ticket.id!]: selectedUser }));
 
-    const body = {
-      ticketId: ticket.id,
+    updateTicketMutation.mutate({
+      ticketId: ticket.id!,
       assignedTo: selectedUser,
-      priority: selectedPriority === '' ? ticket.priority : selectedPriority,
-      status: status === '' ? ticket.status : status
-    };
-
-    if (!token) {
-      toast.error('You are not authorized to view this page');
-      return;
-    }
-
-    const response = await apiFetch(`/api/tickets/${ticket.id}`, 'POST', body, token);
-    if (response.ok) {
-      const updatedTicket = await response.json();
-      setTickets((prev) =>
-        prev.map((currentTicket) =>
-          currentTicket.id === ticket.id ? updatedTicket : currentTicket
-        )
-      );
-      toast.success('Ticket updated successfully');
-    } else {
-      setAssignedUsers((prev) => ({
-        ...prev,
-        [ticket.id]: previousUser,
-      }));
-      toast.error('Failed to update ticket');
-    }
+      priority: selectedPriority!,
+      status,
+    });
   };
 
   const getPriorityColor = (priority: string) => {
@@ -458,7 +435,11 @@ export default function Tickets() {
             <tbody>
               {displayedTickets.map((ticket: Ticket) => (
                 <React.Fragment key={ticket.id}>
-                  <tr onClick={() => handleRowToggle(ticket.id!)}>
+                  <tr className={highlightedTicket === ticket.id ? 'bg-blue-200' : ''}
+                    onClick={() => {
+                      handleRowToggle(ticket.id!);
+                      setHighlightedTicket(ticket.id!);
+                    }}>
                     <td className="border border-gray-400 p-2 hidden md:table-cell">{ticket.ticketNumber}</td>
                     {/* Priority */}<td className="border border-gray-400 p-2">
                       <div className="flex items-center justify-center">
@@ -556,7 +537,7 @@ export default function Tickets() {
               ))}
             </tbody>
           </table>
-          {loading && (
+          {isTicketsLoading && (
             <div className="loader-container">
               <div className="loader"></div>
             </div>

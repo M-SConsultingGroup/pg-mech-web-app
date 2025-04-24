@@ -22,7 +22,7 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, isAdmin, handleRo
         <FaEdit size={16} />
       </button>
       <button
-        onClick={() => router.push(`/tickets/${ticket.id}/invoice`)}
+        onClick={() => router.push(`/invoice/${ticket.id}`)}
         className="bg-blue-500 p-1 rounded flex items-center justify-center text-white hover:bg-blue-600 transition-colors"
         aria-label="Print invoice"
       >

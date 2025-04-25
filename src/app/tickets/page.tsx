@@ -177,14 +177,21 @@ export default function Tickets() {
       modalType: 'confirmation',
       isOpen: true,
       message,
-      onConfirm: () => deleteTicketMutation.mutate(ticket.id!),
+      onConfirm: () => {
+        deleteTicketMutation.mutate(ticket.id!)
+        setModalProps({
+          modalType: 'none',
+          isOpen: false,
+          message: '',
+        })
+      },
     });
   };
 
   const openPriorityModal = (): Promise<Priority> => {
     return new Promise((resolve) => {
       const handleCloseModal = () => {
-        resolve('Medium');
+        resolve('');
         setModalProps({
           modalType: 'none',
           isOpen: false,

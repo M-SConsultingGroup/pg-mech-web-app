@@ -16,8 +16,6 @@ const InvoicePage = () => {
 	const [laborCost, setLaborCost] = useState(0);
 	const [isSendingToSquare, setIsSendingToSquare] = useState(false);
 	const [squareStatus, setSquareStatus] = useState('');
-
-	// New state for payment methods and warranties
 	const [paymentMethods, setPaymentMethods] = useState({
 		card: true,
 		bankAccount: false
@@ -118,9 +116,19 @@ const InvoicePage = () => {
 
 			if (response.ok) {
 				const result = await response.json();
-				setSquareStatus('Invoice saved as draft in Square successfully!');
-				if (result.invoiceUrl) {
-					window.open(result.invoiceUrl, '_blank');
+				setSquareStatus(`Invoice saved as draft in Square successfully with Invoice Number: ${result.invoiceNumber}`);
+
+				// Update the ticket with the invoice number
+				if (result.invoiceNumber) {
+					try {
+						const updateResponse = await apiFetch(`/api/tickets/${ticketId}`, 'POST', { invoiceNumber: `SQ_${result.invoiceNumber}` }, authToken);
+
+						if (!updateResponse.ok) {
+							toast.error('Failed to update ticket with invoice number');
+						}
+					} catch (updateError) {
+						console.error('Error updating ticket:', updateError);
+					}
 				}
 			} else {
 				const error = await response.json();

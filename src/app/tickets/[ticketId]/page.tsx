@@ -9,7 +9,7 @@ import { Ticket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import partsData from '@/common/partslist.json' assert { type: 'json' };
 import { apiFetch } from '@/lib/api';
-
+import { FiX } from 'react-icons/fi';
 
 const TicketDetails = () => {
   const router = useRouter();
@@ -24,6 +24,7 @@ const TicketDetails = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredParts, setFilteredParts] = useState<string[]>([]);
   const [selectedParts, setSelectedParts] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const filteredStatuses = TICKET_STATUSES.filter(status => status !== 'New');
 
@@ -37,6 +38,18 @@ const TicketDetails = () => {
       setFilteredParts([]);
     }
   }, [searchQuery]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isModalOpen) {
+        if (e.key === 'ArrowRight') handleNextImage();
+        if (e.key === 'ArrowLeft') handlePrevImage();
+        if (e.key === 'Escape') setIsModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen, currentImageIndex, selectedImages.length]);
 
   useEffect(() => {
     if (ticketId) {
@@ -56,6 +69,7 @@ const TicketDetails = () => {
             setTicket(ticketData);
             setEditedTicket(ticketData);
             setSelectedImages(ticketData.images || []);
+            setSelectedParts(ticketData.partsUsed || []);
           } else {
             toast.error('Failed to fetch ticket details');
           }
@@ -79,9 +93,10 @@ const TicketDetails = () => {
     setSelectedImages((prevImages) => prevImages.filter((_, i) => i !== index));
   };
 
-  const handleImageClick = async (image: string) => {
+  const handleImageClick = async (image: string, index: number) => {
     const decompressedImage = await fetch(image).then(res => res.blob());
     const imageUrl = URL.createObjectURL(decompressedImage);
+    setCurrentImageIndex(index);
     setSelectedImage(imageUrl);
     setIsModalOpen(true);
   };
@@ -126,7 +141,7 @@ const TicketDetails = () => {
       const updatedTicket = {
         ...editedTicket,
         partsUsed: selectedParts,
-        images: [...(editedTicket.images || []), ...base64Images],
+        images: [...(editedTicket?.images || []), ...base64Images],
       };
 
       const response = await apiFetch(`/api/tickets/${ticketId}`, 'POST', updatedTicket, authToken);
@@ -142,29 +157,79 @@ const TicketDetails = () => {
     }
   };
 
-  const ImageModal = ({ image, onClose }: { image: string, onClose: () => void }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="relative max-w-full max-h-full">
-        <Image
-          src={image}
-          alt="Expanded"
-          layout="responsive"
-          width={800}
-          height={600}
-          className="object-contain"
-        />
-        <button
-          onClick={onClose}
-          className="absolute top-0 right-0 bg-red-600 text-white p-2 rounded-full"
-        >
-          &times;
-        </button>
+  const ImageModal = ({ images, currentIndex, onClose, onNext, onPrev }: {
+    images: (string | File)[];
+    currentIndex: number;
+    onClose: () => void;
+    onNext: () => void;
+    onPrev: () => void;
+  }) => {
+    const currentImage = images[currentIndex];
+    const imageUrl = typeof currentImage === 'string' ? currentImage : URL.createObjectURL(currentImage);
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+        <div className="relative max-w-full max-h-full">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 flex items-center justify-center rounded-full transform translate-x-1/2 -translate-y-1/2 hover:bg-red-700 transition-colors"
+          >
+            <FiX className="w-4 h-4" />
+          </button>
+
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={onPrev}
+                disabled={currentIndex === 0}
+                className={`absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full z-50 ${currentIndex === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-opacity-70'
+                  }`}
+              >
+                &larr;
+              </button>
+              <button
+                onClick={onNext}
+                disabled={currentIndex === images.length - 1}
+                className={`absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full z-50 ${currentIndex === images.length - 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-opacity-70'
+                  }`}
+              >
+                &rarr;
+              </button>
+            </>
+          )}
+
+          <div className="flex items-center justify-center h-full">
+            <Image
+              src={imageUrl}
+              alt={`Ticket image ${currentIndex + 1}`}
+              width={800}
+              height={600}
+              className="object-contain max-h-[90vh]"
+              priority
+            />
+          </div>
+
+          {images.length > 1 && (
+            <div className="absolute bottom-4 left-0 right-0 text-center text-white">
+              {currentIndex + 1} / {images.length}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % selectedImages.length);
+  };
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + selectedImages.length) % selectedImages.length);
+  };
 
   return (
-    <div className="min-h-screen p-4 pb-10 flex flex-col items-center justify-center bg-gray-100 relative">
+    <div className="min-h-screen p-4 pb-10 bg-gray-100 relative">
       <div className="flex items-center mb-4">
         <button onClick={() => router.push('/tickets')} className="mr-2">
           <svg
@@ -182,215 +247,228 @@ const TicketDetails = () => {
             />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold text-gray-800">Edit Ticket</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Edit Ticket #{editedTicket.ticketNumber}</h1>
       </div>
-      <form className="w-full max-w-lg bg-white p-4 rounded-lg shadow-lg">
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Ticket Number</label>
-          <input
-            type="text"
-            name="ticketNumber"
-            value={editedTicket.ticketNumber || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
-            disabled
-          />
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Name</label>
-          <input
-            type="text"
-            name="name"
-            value={editedTicket.name || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
-            disabled
-          />
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Service Address</label>
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(editedTicket.serviceAddress || '')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100"
-          >
-            {editedTicket.serviceAddress || ''}
-          </a>
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={editedTicket.email || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
-            disabled
-          />
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Phone Number</label>
-          <a
-            href={`tel:${editedTicket.phoneNumber}`}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 text-blue-600 underline bg-gray-100"
-          >
-            {editedTicket.phoneNumber || ''}
-          </a>
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Work Order Description</label>
-          <textarea
-            name="workOrderDescription"
-            value={editedTicket.workOrderDescription || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
-            disabled
-          />
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Time Availability</label>
-          <input
-            type="text"
-            name="timeAvailability"
-            value={editedTicket.timeAvailability || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
-            disabled
-          />
-        </div>
-        {/* Parts */}<div className="mb-2">
-          <label className="block mb-1 text-gray-700">Parts Used</label>
-          <input
-            type="text"
-            name="partsUsed"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-            placeholder="Search for parts"
-          />
-          {filteredParts.length > 0 && (
-            <ul className="border rounded mt-2 max-h-40 overflow-y-auto">
-              {filteredParts.map((part, index) => (
-                <li
-                  key={index}
-                  onClick={() => {
-                    setSelectedParts((prev) => [...prev, part]);
-                    setSearchQuery('');
-                    setFilteredParts([]);
-                  }}
-                  className="p-2 cursor-pointer hover:bg-gray-200"
+
+      <div className="w-full mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-1 text-gray-700 font-medium">Customer Information</label>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-lg font-semibold">{editedTicket.name}</p>
+                <p>{editedTicket.serviceAddress}</p>
+                <p>{editedTicket.email}</p>
+                <p>{editedTicket.phoneNumber}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-700 font-medium">Work Description</label>
+              <textarea
+                name="workOrderDescription"
+                value={editedTicket.workOrderDescription || ''}
+                onChange={handleInputChange}
+                className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
+                disabled
+                rows={4}
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-700 font-medium">Time Availability</label>
+              <input
+                type="text"
+                name="timeAvailability"
+                value={editedTicket.timeAvailability || ''}
+                onChange={handleInputChange}
+                className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
+                disabled
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-700 font-medium">Images</label>
+              <div className="flex flex-wrap gap-2">
+                {selectedImages.map((image, index) => (
+                  <div key={index} className="relative">
+                    <Image
+                      src={typeof image === 'string' ? image : URL.createObjectURL(image)}
+                      alt={`Uploaded ${index}`}
+                      width={100}
+                      height={100}
+                      className="object-cover cursor-pointer rounded"
+                      onClick={() => handleImageClick(typeof image === 'string' ? image : URL.createObjectURL(image), index)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 flex items-center justify-center rounded-full transform translate-x-1/2 -translate-y-1/2 hover:bg-red-700 transition-colors"
+                    >
+                      <FiX className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1 text-gray-700 font-medium">Status</label>
+                <select
+                  name="status"
+                  value={editedTicket.status || ''}
+                  onChange={handleInputChange}
+                  className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
-                  {part}
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-2">
-            {ticket?.partsUsed && ticket?.partsUsed.length > 0 && ticket?.partsUsed.map((part, index) => (
-              <span key={index} className="inline-block bg-gray-200 p-1 m-1 rounded">
-                {part}
-              </span>
-            ))}
-            {selectedParts.map((part, index) => (
-              <span key={index} className="inline-block bg-gray-200 p-1 m-1 rounded">
-                {part}
-              </span>
-            ))}
+                  {filteredStatuses.map(status => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-1 text-gray-700 font-medium">Invoice Number</label>
+                <input
+                  type="text"
+                  name="squareInvoiceNumber"
+                  value={editedTicket.invoiceNumber || ''}
+                  onChange={handleInputChange}
+                  className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  placeholder="Square Invoice #"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-700 font-medium">Services Delivered</label>
+              <input
+                type="text"
+                name="servicesDelivered"
+                value={editedTicket.servicesDelivered || ''}
+                onChange={handleInputChange}
+                className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-700 font-medium">Parts Used</label>
+              <input
+                type="text"
+                name="partsUsed"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+                placeholder="Search for parts"
+              />
+              {filteredParts.length > 0 && (
+                <ul className="border rounded mt-2 max-h-40 overflow-y-auto">
+                  {filteredParts.map((part, index) => (
+                    <li
+                      key={index}
+                      onClick={() => {
+                        setSelectedParts((prev) => [...prev, part]);
+                        setSearchQuery('');
+                        setFilteredParts([]);
+                      }}
+                      className="p-2 cursor-pointer hover:bg-gray-200"
+                    >
+                      {part}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedParts.map((part, index) => (
+                  <span
+                    key={index}
+                    className="inline-block bg-gray-200 px-3 py-1 rounded-full text-sm"
+                  >
+                    {part}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedParts(prev => prev.filter(p => p !== part))}
+                      className="ml-1 text-gray-600 hover:text-red-600"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1 text-gray-700 font-medium">Amount Billed ($)</label>
+                <input
+                  type="number"
+                  name="amountBilled"
+                  value={editedTicket.amountBilled || ''}
+                  onChange={handleInputChange}
+                  className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-gray-700 font-medium">Amount Paid ($)</label>
+                <input
+                  type="number"
+                  name="amountPaid"
+                  value={editedTicket.amountPaid || ''}
+                  onChange={handleInputChange}
+                  className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-gray-700 font-medium">Additional Notes</label>
+              <textarea
+                name="additionalNotes"
+                value={editedTicket.additionalNotes || ''}
+                onChange={handleInputChange}
+                className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
+                rows={4}
+              />
+            </div>
+
           </div>
         </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Services Delivered</label>
-          <input
-            type="text"
-            name="servicesDelivered"
-            value={editedTicket.servicesDelivered || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-          />
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Additional Notes</label>
-          <textarea
-            name="additionalNotes"
-            value={editedTicket.additionalNotes || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-          />
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Status</label>
-          <select
-            name="status"
-            value={editedTicket.status || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
-          >
-            {filteredStatuses.map(status => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Amount Billed</label>
-          <input
-            type="number"
-            name="amountBilled"
-            value={editedTicket.amountBilled || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-          />
-        </div>
-        <div className="mb-2">
-          <label className="block mb-1 text-gray-700">Amount Paid</label>
-          <input
-            type="number"
-            name="amountPaid"
-            value={editedTicket.amountPaid || ''}
-            onChange={handleInputChange}
-            className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600"
-          />
-        </div>
-        <div className="mb-2 flex flex-wrap justify-center">
-          {selectedImages.map((image, index) => (
-            <div key={index} className="relative m-2">
-              <Image
-                src={typeof image === 'string' ? image : URL.createObjectURL(image)}
-                alt={`Uploaded ${index}`}
-                width={128}
-                height={128}
-                className="object-cover cursor-pointer"
-                onClick={() => handleImageClick(typeof image === 'string' ? image : URL.createObjectURL(image))}
-              />
-              <button
-                type="button"
-                onClick={() => handleRemoveImage(index)}
-                className="absolute top-0 right-0 bg-red-600 text-white p-1 rounded-full"
-              >
-                &times;
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex space-x-2">
+
+        <div className="mt-8 flex justify-end">
           <button
             type="button"
             onClick={handleSaveClick}
-            className="bg-green-600 hover:bg-green-700 text-white p-2 rounded shadow-lg transition duration-300 w-full"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded shadow-lg transition duration-300"
+            disabled={loading}
           >
-            Save
+            {loading ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
-      </form>
+      </div>
+
       {loading && (
-        <div className="loader-container">
-          <div className="loader"></div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       )}
-      {isModalOpen && selectedImage && (
-        <ImageModal image={selectedImage} onClose={() => setIsModalOpen(false)} />
+
+      {isModalOpen && (
+        <ImageModal
+          images={selectedImages}
+          currentIndex={currentImageIndex}
+          onClose={() => setIsModalOpen(false)}
+          onNext={handleNextImage}
+          onPrev={handlePrevImage}
+        />
       )}
     </div>
   );

@@ -12,6 +12,7 @@ export interface Ticket {
   assignedTo?: string;
   createdAt: Date;
   updatedAt: Date;
+  invoiceNumber: string;
   partsUsed?: string[];
   servicesDelivered?: string;
   additionalNotes?: string;

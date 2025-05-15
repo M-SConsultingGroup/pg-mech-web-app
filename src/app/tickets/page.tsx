@@ -255,7 +255,8 @@ export default function Tickets() {
   const filteredTickets = tickets
     .filter((ticket) =>
       ticket.name.toLowerCase().includes(filter.toLowerCase()) ||
-      ticket.serviceAddress.toLowerCase().includes(filter.toLowerCase())
+      ticket.serviceAddress.toLowerCase().includes(filter.toLowerCase()) ||
+      ticket.phoneNumber.toLowerCase().includes(filter.toLowerCase())
     )
     .sort((a, b) => {
       if (!sortField) return 0;

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
-import { FiMenu, FiX, FiUser, FiLogOut, FiClock, FiUsers, FiPlus, FiTruck } from 'react-icons/fi';
+import { FiMenu, FiX, FiUser, FiLogOut, FiClock, FiUsers, FiPlus, FiTruck, FiMap } from 'react-icons/fi';
 
 const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -40,6 +40,7 @@ const Navbar = () => {
   const navLinks = [
     { name: 'Tickets', path: '/tickets', icon: <FiTruck className="mr-2" /> },
     ...(isAdmin ? [
+      { name: 'Map', path: '/map', icon: <FiMap className="mr-2" /> },
       { name: 'Create User', path: '/create-user', icon: <FiPlus className="mr-2" /> },
       { name: 'Time Logs', path: '/time-logs', icon: <FiClock className="mr-2" /> },
       { name: 'All Users', path: '/all-users', icon: <FiUsers className="mr-2" /> },

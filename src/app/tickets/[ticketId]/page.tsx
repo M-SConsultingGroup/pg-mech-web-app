@@ -284,7 +284,6 @@ const TicketDetails = () => {
                 value={editedTicket.timeAvailability || ''}
                 onChange={handleInputChange}
                 className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
-                disabled
               />
             </div>
 

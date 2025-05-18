@@ -9,10 +9,11 @@ export interface Ticket {
   timeAvailability: string;
   status: string;
   inProgress: boolean;
-  assignedTo?: string;
   createdAt: Date;
   updatedAt: Date;
-  invoiceNumber: string;
+  coordinates: { latitude: number; longitude: number };
+  assignedTo?: string;
+  invoiceNumber?: string;
   partsUsed?: string[];
   servicesDelivered?: string;
   additionalNotes?: string;

@@ -5,17 +5,13 @@ import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FaMapMarkerAlt } from 'react-icons/fa';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { FiArrowLeft } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/lib/api';
 import { Ticket } from '@/common/interfaces';
-
-interface GeocodedTicket extends Ticket {
-	coordinates: [number, number];
-}
 
 const markerIcon = (color: string) => {
 	const iconSvg = renderToStaticMarkup(
@@ -35,9 +31,8 @@ const markerIcon = (color: string) => {
 const TicketMap = () => {
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const [geocodedTickets, setGeocodedTickets] = useState<GeocodedTicket[]>([]);
-	const [isGeocoding, setIsGeocoding] = useState(false);
 	const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
+
 	const { data: users = [] } = useQuery<string[]>({
 		queryKey: ['users'],
 		queryFn: async () => {
@@ -116,62 +111,7 @@ const TicketMap = () => {
 		});
 	};
 
-	useEffect(() => {
-		const geocodeTickets = async () => {
-			if (tickets.length === 0) return;
-
-			setIsGeocoding(true);
-			try {
-				const results = await Promise.all(
-					tickets
-						.filter(ticket => ticket.serviceAddress)
-						.map(async (ticket) => {
-							const coordinates = await getCoordinatesForAddress(ticket.serviceAddress);
-							return {
-								...ticket,
-								coordinates
-							};
-						})
-				);
-				setGeocodedTickets(results.filter(ticket => ticket.coordinates !== null));
-			} catch (error) {
-				console.error('Geocoding error:', error);
-				toast.error('Error geocoding addresses');
-			} finally {
-				setIsGeocoding(false);
-			}
-		};
-
-		geocodeTickets();
-	}, [tickets]);
-
-	// Function to geocode addresses using OpenStreetMap Nominatim
-	const getCoordinatesForAddress = async (address: string): Promise<[number, number]> => {
-		try {
-			const response = await fetch(
-				`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
-			);
-
-			if (!response.ok) {
-				throw new Error('Geocoding failed');
-			}
-
-			const data = await response.json();
-
-			if (data.length === 0) {
-				console.warn('No coordinates found for address:', address);
-				return [0, 0];
-			}
-
-			// Return the first result's coordinates
-			return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-		} catch (error) {
-			console.error('Error geocoding address:', address, error);
-			return [0, 0];
-		}
-	};
-
-	if (isTicketsLoading || isGeocoding) {
+	if (isTicketsLoading) {
 		return (
 			<div className="min-h-screen p-4 pb-10 bg-gray-100 relative">
 				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -184,17 +124,13 @@ const TicketMap = () => {
 	return (
 		<div id='map' className="min-h-screen p-4 pb-10 bg-gray-100 relative">
 			<div className="flex items-center mb-4">
-				<button
-					onClick={() => router.push('/tickets')}
-					className="mr-2 p-1 rounded hover:bg-gray-200 transition-colors"
-				>
+				<button onClick={() => router.push('/tickets')} className="mr-2 p-1 rounded hover:bg-gray-200 transition-colors">
 					<FiArrowLeft className="w-6 h-6 text-gray-800" />
 				</button>
 				<h1 className="text-2xl font-bold text-gray-800">Service Tickets Map</h1>
 			</div>
-
 			<div className="w-full mx-auto bg-white p-6 rounded-lg shadow-lg">
-				{geocodedTickets.length === 0 ? (
+				{tickets.length === 0 ? (
 					<div className="w-full h-[500px] flex items-center justify-center bg-gray-100 rounded-lg">
 						<p className="text-gray-600">No tickets with valid addresses to display on map.</p>
 					</div>
@@ -209,8 +145,8 @@ const TicketMap = () => {
 								url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 								attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 							/>
-							{geocodedTickets.map((ticket) => (
-								<Marker key={ticket.id} position={ticket.coordinates} icon={markerIcon('red')}>
+							{tickets.map((ticket) => (
+								<Marker key={ticket.id} position={[ticket?.coordinates?.latitude, ticket?.coordinates?.longitude]} icon={markerIcon('red')}>
 									<Popup>
 										<div className="space-y-2 min-w-[250px]">
 											<h3 className="font-bold text-lg">{ticket.name}</h3>

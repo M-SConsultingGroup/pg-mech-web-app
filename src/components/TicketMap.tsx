@@ -8,10 +8,10 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { FaMapMarkerAlt } from 'react-icons/fa';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiStar, FiUser } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/lib/api';
-import { Ticket } from '@/common/interfaces';
+import { Priority, priorityMap, Ticket } from '@/common/interfaces';
 
 const markerIcon = (color: string) => {
 	const iconSvg = renderToStaticMarkup(
@@ -32,6 +32,7 @@ const TicketMap = () => {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
+	const [editedTicket, setEditedTicket] = useState<Partial<Ticket>>({});
 
 	const { data: users = [] } = useQuery<string[]>({
 		queryKey: ['users'],
@@ -90,25 +91,40 @@ const TicketMap = () => {
 		},
 	});
 
-	const handleAssignedUserChange = async (ticket: Ticket, selectedUser: string) => {
-		const previousUser = assignedUsers[ticket.id!];
-		let status = ticket.status;
-		let selectedPriority = ticket.priority;
+	const handleAssignedUserChange = async (ticket: Ticket) => {
+		const updatedTicket = {
+			...ticket,
+			assignedTo: assignedUsers[ticket.id!] || ticket.assignedTo,
+			priority: editedTicket.priority || ticket.priority,
+			status: ticket.status === 'New' && (assignedUsers[ticket.id!] || ticket.assignedTo) !== 'Unassigned'
+				? 'Open'
+				: ticket.status
+		};
 
-		if (ticket.status === 'New' && selectedUser !== 'Unassigned' && previousUser != '') {
-			status = 'Open';
-			selectedPriority = 'Highest';
-			if (!selectedPriority) return;
+		try {
+			const token = localStorage.getItem('token');
+			if (!token) {
+				router.push('/login');
+				return;
+			}
+
+			const response = await apiFetch(
+				`/api/tickets/${ticket.id}`,
+				'POST',
+				updatedTicket,
+				token
+			);
+
+			if (response.ok) {
+				toast.success('Ticket updated successfully');
+				queryClient.invalidateQueries({ queryKey: ['tickets'] });
+			} else {
+				toast.error('Failed to update ticket');
+			}
+		} catch (error) {
+			toast.error('Error updating ticket');
+			console.error('Update error:', error);
 		}
-
-		setAssignedUsers((prev) => ({ ...prev, [ticket.id!]: selectedUser }));
-
-		updateTicketMutation.mutate({
-			ticketId: ticket.id!,
-			assignedTo: selectedUser,
-			priority: selectedPriority!,
-			status,
-		});
 	};
 
 	if (isTicketsLoading) {
@@ -155,26 +171,54 @@ const TicketMap = () => {
 											<p><span className="font-semibold">Description:</span> {ticket.workOrderDescription}</p>
 											<p>
 												<span className="font-semibold">Status:</span>{' '}
-												<span className={'px-2 py-1 rounded-full text-xs bg-green-100 text-green-800'}>
+												<span className={`px-2 py-1 rounded-full text-xs ${ticket.status === 'completed' ? 'bg-green-100 text-green-800' :
+													ticket.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+														'bg-yellow-100 text-yellow-800'
+													}`}>
 													{ticket.status}
 												</span>
 											</p>
-											<div className="flex items-center">
-												<span className="font-semibold mr-2">Assigned To:</span>
-												<select
-													value={assignedUsers[ticket.id!] || ticket.assignedTo || "Unassigned"}
-													onChange={(e) => handleAssignedUserChange(ticket, e.target.value)}
-													className="border p-1 rounded text-sm"
+
+											<div className="space-y-2">
+												<div className="flex items-center">
+													<FiUser className="mr-2 text-gray-600" />
+													<select
+														value={assignedUsers[ticket.id!] || ticket.assignedTo || "Unassigned"}
+														onChange={(e) => setAssignedUsers(prev => ({ ...prev, [ticket.id!]: e.target.value }))}
+														className="border p-1 rounded text-sm flex-1"
+													>
+														<option value="Unassigned">Unassigned</option>
+														{users.map((user) => (
+															<option key={user} value={user}>
+																{user}
+															</option>
+														))}
+													</select>
+												</div>
+
+												<div className="flex items-center">
+													<FiStar className="mr-2 text-gray-600" />
+													<select
+														value={ticket.priority || ""}
+														onChange={(e) => setEditedTicket(prev => ({ ...prev, priority: e.target.value as Priority }))}
+														className="border p-1 rounded text-sm flex-1"
+													>
+														<option value="">Select Priority</option>
+														{Object.keys(priorityMap).map((priority) => (
+															<option key={priority} value={priority}>
+																{priority}
+															</option>
+														))}
+													</select>
+												</div>
+
+												<button
+													onClick={() => handleAssignedUserChange(ticket)}
+													className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded text-sm flex items-center justify-center"
 												>
-													<option value="Unassigned">Unassigned</option>
-													{users.map((user) => (
-														<option key={user} value={user}>
-															{user}
-														</option>
-													))}
-												</select>
+													Update Ticket
+												</button>
 											</div>
-											<p><span className="font-semibold">Priority:</span> {ticket.priority || 'Not set'}</p>
 											<p><span className="font-semibold">Availability:</span> {ticket.timeAvailability}</p>
 											<p><span className="font-semibold">Contact:</span> {ticket.phoneNumber} | {ticket.email}</p>
 										</div>

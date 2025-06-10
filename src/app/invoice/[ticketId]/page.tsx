@@ -82,8 +82,8 @@ const InvoicePage = () => {
 				throw new Error('Not authenticated');
 			}
 
-			if (!ticket?.additionalNotes || ticket.additionalNotes.trim() === '') {
-				toast.error('Please add notes before saving to Square');
+			if (!ticket?.servicesDelivered || ticket.servicesDelivered.trim() === '') {
+				toast.error('Please add services delivered before saving to Square');
 				return;
 			}
 

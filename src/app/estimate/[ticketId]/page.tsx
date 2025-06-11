@@ -239,6 +239,138 @@ const EstimatePage = () => {
 		return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 	};
 
+	const handleSave = async () => {
+		if (isSaving || items.length === 0 || !estimate) return;
+
+		setIsSaving(true);
+		setSaveStatus('');
+
+		try {
+			const authToken = localStorage.getItem('token');
+			if (!authToken) {
+				throw new Error('Not authenticated');
+			}
+
+			const total = calculateTotal();
+			const htmlContent = generateEmailHtml(estimate, items, total);
+
+			const response = await apiFetch('/api/email/send', 'POST', {
+				to: estimate.email,
+				subject: `Estimate #${estimate.ticketNumber} from PG Mechanical LLC`,
+				message: htmlContent,
+				isHtml: true
+			}, authToken);
+
+			if (response.ok) {
+				setSaveStatus('Email sent successfully!');
+				toast.success('Estimate sent via email');
+			} else {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Failed to send email');
+			}
+		} catch (error) {
+			console.error('Email sending failed:', error);
+			setSaveStatus(`Error: ${error instanceof Error ? error.message : 'Failed to send email'}`);
+			toast.error('Failed to send email');
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	const generateEmailHtml = (estimate: Ticket, items: EstimateItem[], total: number) => {
+		const itemRows = items.map(item => `
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd; vertical-align: top;">
+        <div style="font-weight: 500;">${item.name}</div>
+        ${item.description ? `
+          <div style="font-size: 14px; color: #666; margin-top: 4px;">
+            ${item.description.split('; ').map(model => `
+              <div>• ${model.trim()}</div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top;">$${item.price.toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top;">${item.quantity}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top;">$${(item.price * item.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+		return `
+    <html>
+      <body style="font-family: Arial, sans-serif;">
+        <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+					<div style="display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 20px;">
+						<div style="width: 50%;">
+							<h2 style="font-size: 20px; font-weight: bold; margin: 0 0 10px 0;">PG Mechanical LLC</h2>
+							<p style="margin: 5px 0;">1111 Saddlebrook Dr.</p>
+							<p style="margin: 5px 0;">Murphy, TX 75087</p>
+							<p style="margin: 5px 0;">Phone: (469) 274-6462</p>
+						</div>
+						<div style="width: 50%; text-align: left;">
+							<h2 style="font-size: 20px; font-weight: bold; margin: 0 0 10px 0;">ESTIMATE</h2>
+							<p style="margin: 5px 0;">Date: ${new Date().toLocaleDateString()}</p>
+							<p style="margin: 5px 0;">Estimate #: ${estimate.ticketNumber}</p>
+							<p style="margin: 5px 0;">LIC#TACLB51418C</p>
+						</div>
+					</div>
+
+          <div style="margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 20px;">
+            <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">Bill To:</h3>
+            <p style="margin: 5px 0;">${estimate.name}</p>
+            <p style="margin: 5px 0;">${estimate.serviceAddress}</p>
+            <p style="margin: 5px 0;">${estimate.email}</p>
+            <p style="margin: 5px 0;">${estimate.phoneNumber}</p>
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">Estimate Items</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+              <tr style="background-color: #f5f5f5;">
+                <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Item</th>
+                <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Price</th>
+                <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Qty</th>
+                <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemRows}
+            </tbody>
+          </table>
+
+					<div style="margin-left: auto; width: 250px; border-top: 2px solid #ddd; padding-top: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold;">
+              <span>Total:</span>
+              <span>$${total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <!-- Add the note here -->
+          <div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 4px; border-left: 4px solid #6c757d;">
+            <p style="margin: 0; font-style: italic; color: #6c757d;">
+              Note: This estimate is valid for 30 days from the date shown above.
+            </p>
+          </div>
+
+					<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd;">
+						<div style="display: flex; justify-content: space-between;">
+							<div style="width: 50%;">
+								<p style="margin-bottom: 5px;">Technician Signature:</p>
+								<div style="height: 60px; width: 180px; border-bottom: 1px solid #000;"></div>
+							</div>
+							<div style="width: 50%;">
+								<p style="margin-bottom: 5px;">Customer Signature:</p>
+								<div style="height: 60px; width: 180px; border-bottom: 1px solid #000;"></div>
+							</div>
+						</div>
+					</div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+	};
+
 	if (loading) return <div className="text-center py-8">Loading...</div>;
 	if (!estimate) return <div className="text-center py-8">estimate not found</div>;
 
@@ -264,7 +396,7 @@ const EstimatePage = () => {
 						<p>Murphy, TX 75087</p>
 						<p>Phone: (469) 274-6462</p>
 					</div>
-					<div className="text-right">
+					<div className="w-1/2 text-left">
 						<h2 className="text-xl font-semibold">ESTIMATE</h2>
 						<p>Date: {new Date().toLocaleDateString()}</p>
 						<p>Estimate #: {estimate.ticketNumber}</p>
@@ -471,21 +603,14 @@ const EstimatePage = () => {
 					</div>
 				</div>
 
-				{/* Signature */}
-				<div className="mt-12 pt-8 border-t">
-					<div className="flex justify-between">
-						<div>
-							<p className="mb-1">Technician Signature:</p>
-							<div className="h-16 w-48 border-b border-black"></div>
-						</div>
-						<div>
-							<p className="mb-1">Customer Signature:</p>
-							<div className="h-16 w-48 border-b border-black"></div>
-						</div>
-					</div>
+				{/* Add the note here */}
+				<div className="mt-4 p-3 bg-gray-50 rounded border-l-4 border-gray-400">
+					<p className="text-gray-600 italic">
+						Note: This estimate is valid for 30 days from the date shown above.
+					</p>
 				</div>
 
-				{/* Print and Save Buttons */}
+				{/* Print and Send Buttons */}
 				<div className="mt-8 text-center print:hidden">
 					<button
 						onClick={() => window.print()}
@@ -494,11 +619,11 @@ const EstimatePage = () => {
 						Print Estimate
 					</button>
 					<button
-						onClick={window.print}
+						onClick={handleSave}
 						disabled={isSaving || items.length === 0}
 						className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded disabled:bg-green-400"
 					>
-						{isSaving ? 'Saving...' : 'Save Estimate'}
+						{isSaving ? 'Sending...' : 'Send Estimate'}
 					</button>
 				</div>
 				{saveStatus && (

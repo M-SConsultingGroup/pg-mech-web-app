@@ -2,6 +2,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Ticket } from '@/common/interfaces';
 import { FaEdit, FaTrash, FaPrint } from 'react-icons/fa';
+import { MdFindInPage } from 'react-icons/md';
 
 interface TicketActionsProps {
   ticket: Ticket;
@@ -27,6 +28,13 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, isAdmin, handleRo
         aria-label="Print invoice"
       >
         <FaPrint size={16} />
+      </button>
+      <button
+        onClick={() => router.push(`/estimate/${ticket.id}`)}
+        className="bg-slate-500 p-1 rounded flex items-center justify-center text-white hover:bg-blue-600 transition-colors"
+        aria-label="Print invoice"
+      >
+        <MdFindInPage size={16} />
       </button>
       {isAdmin && (
         <button

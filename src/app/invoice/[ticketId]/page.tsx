@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Ticket } from '@/common/interfaces';
 import { apiFetch } from '@/lib/api';
+import { FaArrowLeftLong } from 'react-icons/fa6';
 
 const InvoicePage = () => {
 	const router = useRouter();
@@ -151,10 +152,10 @@ const InvoicePage = () => {
 				{/* Header with back button (hidden when printing) */}
 				<div className="flex items-center mb-6 print:hidden">
 					<button
-						onClick={() => router.push(`/tickets`)}
+						onClick={() => router.back()}
 						className="mr-4 p-2 rounded-full hover:bg-gray-100"
 					>
-						← Back
+						<FaArrowLeftLong size={16} /> 
 					</button>
 					<h1 className="text-2xl font-bold">Invoice</h1>
 				</div>

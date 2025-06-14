@@ -3,13 +3,16 @@
 import imageCompression from 'browser-image-compression';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { FiX } from 'react-icons/fi';
+import { MdFindInPage } from 'react-icons/md';
+import { FaPrint } from 'react-icons/fa';
+import { FaArrowLeftLong } from "react-icons/fa6";
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Ticket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import partsData from '@/common/partslist.json' assert { type: 'json' };
 import { apiFetch } from '@/lib/api';
-import { FiX } from 'react-icons/fi';
 
 const TicketDetails = () => {
   const router = useRouter();
@@ -231,23 +234,24 @@ const TicketDetails = () => {
   return (
     <div className="min-h-screen p-4 pb-10 bg-gray-100 relative">
       <div className="flex items-center mb-4">
-        <button onClick={() => router.push('/tickets')} className="mr-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            className="w-6 h-6 text-gray-800"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
+        <button onClick={() => router.back()} className="mr-2">
+          <FaArrowLeftLong />
         </button>
         <h1 className="text-2xl font-bold text-gray-800">Edit Ticket #{editedTicket.ticketNumber}</h1>
+        <div className="ml-auto gap-2 flex">
+          <button
+            onClick={() => router.push(`/estimate/${ticketId}`)}
+            className="bg-cyan-400 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors items-center flex gap-2"
+          >
+            <MdFindInPage size={20} /> <span>Generate Estimate</span>
+          </button>
+          <button
+            onClick={() => router.push(`/invoice/${ticketId}`)}
+            className="bg-emerald-400 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition-colors items-center flex gap-2"
+          >
+            <FaPrint size={16} /> <span>Print Invoice</span>
+          </button>
+        </div>
       </div>
 
       <div className="w-full mx-auto bg-white p-6 rounded-lg shadow-lg">
@@ -447,7 +451,7 @@ const TicketDetails = () => {
           <button
             type="button"
             onClick={handleSaveClick}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded shadow-lg transition duration-300"
+            className="bg-green-600 hover:bg-green-800 text-white px-6 py-2 rounded shadow-lg transition duration-300"
             disabled={loading}
           >
             {loading ? 'Saving...' : 'Save Changes'}

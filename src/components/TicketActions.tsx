@@ -34,7 +34,7 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, isAdmin, handleRo
         className="bg-slate-500 p-1 rounded flex items-center justify-center text-white hover:bg-blue-600 transition-colors"
         aria-label="Print invoice"
       >
-        <MdFindInPage size={16} />
+        <MdFindInPage size={20} />
       </button>
       {isAdmin && (
         <button

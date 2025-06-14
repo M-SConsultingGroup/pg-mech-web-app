@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api';
 import Papa from 'papaparse';
 import toast from 'react-hot-toast';
 import { Ticket } from '@/common/interfaces';
+import { FaArrowLeftLong } from 'react-icons/fa6';
 
 interface EstimateItem {
 	id: string;
@@ -380,10 +381,10 @@ const EstimatePage = () => {
 				{/* Header with back button (hidden when printing) */}
 				<div className="flex items-center mb-6 print:hidden">
 					<button
-						onClick={() => router.push(`/estimates`)}
+						onClick={() => router.back()}
 						className="mr-4 p-2 rounded-full hover:bg-gray-100"
 					>
-						← Back
+						<FaArrowLeftLong size={16} />
 					</button>
 					<h1 className="text-2xl font-bold">Estimate</h1>
 				</div>

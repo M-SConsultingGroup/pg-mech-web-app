@@ -13,6 +13,7 @@ import { Ticket } from '@/common/interfaces';
 import { TICKET_STATUSES } from '@/common/constants';
 import partsData from '@/common/partslist.json' assert { type: 'json' };
 import { apiFetch } from '@/lib/api';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 const TicketDetails = () => {
   const router = useRouter();
@@ -93,7 +94,14 @@ const TicketDetails = () => {
   };
 
   const handleRemoveImage = (index: number) => {
-    setSelectedImages((prevImages) => prevImages.filter((_, i) => i !== index));
+    setSelectedImages((prevImages) => {
+      const updated = prevImages.filter((_, i) => i !== index);
+      setEditedTicket((prev) => ({
+        ...prev,
+        images: updated.filter((img) => typeof img === 'string'),
+      }));
+      return updated;
+    });
   };
 
   const handleImageClick = async (image: string, index: number) => {
@@ -160,15 +168,19 @@ const TicketDetails = () => {
     }
   };
 
-  const ImageModal = ({ images, currentIndex, onClose, onNext, onPrev }: {
-    images: (string | File)[];
-    currentIndex: number;
-    onClose: () => void;
-    onNext: () => void;
-    onPrev: () => void;
-  }) => {
+  const ImageModal = ({ images, currentIndex, onClose, onNext, onPrev }:
+    {
+      images: (string | File)[];
+      currentIndex: number;
+      onClose: () => void;
+      onNext: () => void;
+      onPrev: () => void;
+    }) => {
     const currentImage = images[currentIndex];
-    const imageUrl = typeof currentImage === 'string' ? currentImage : URL.createObjectURL(currentImage);
+    const imageUrl =
+      typeof currentImage === 'string'
+        ? currentImage
+        : URL.createObjectURL(currentImage);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
@@ -176,7 +188,7 @@ const TicketDetails = () => {
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-0 right-0 bg-red-600 text-white w-6 h-6 flex items-center justify-center rounded-full transform translate-x-1/2 -translate-y-1/2 hover:bg-red-700 transition-colors"
+            className="absolute z-10 top-0 right-0 bg-red-600 text-white w-6 h-6 flex items-center justify-center rounded-full transform translate-x-1/2 -translate-y-1/2 hover:bg-red-700 transition-colors"
           >
             <FiX className="w-4 h-4" />
           </button>
@@ -202,17 +214,54 @@ const TicketDetails = () => {
             </>
           )}
 
-          <div className="flex items-center justify-center h-full">
-            <Image
-              src={imageUrl}
-              alt={`Ticket image ${currentIndex + 1}`}
-              width={800}
-              height={600}
-              className="object-contain max-h-[90vh]"
-              priority
-            />
-          </div>
+          <TransformWrapper
+            initialScale={1}
+            minScale={1}
+            maxScale={3}
+            centerOnInit
+            wheel={{ disabled: false }}
+            doubleClick={{ disabled: true }}
+          >
+            {({ zoomIn, zoomOut, resetTransform }) => (
+              <>
+                <div className="absolute bottom-6 right-6 z-50 flex gap-2">
+                  <button
+                    onClick={() => zoomOut()}
+                    className="bg-white px-3 py-1 rounded shadow text-xl"
+                  >
+                    −
+                  </button>
+                  <button
+                    onClick={() => zoomIn()}
+                    className="bg-white px-3 py-1 rounded shadow text-xl"
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={() => resetTransform()}
+                    className="bg-white px-3 py-1 rounded shadow text-sm"
+                  >
+                    Reset
+                  </button>
+                </div>
 
+
+                <TransformComponent>
+                  <Image
+                    src={imageUrl}
+                    alt={`Zoomable image ${currentIndex + 1}`}
+                    width={800}
+                    height={600}
+                    className="object-contain max-h-[90vh] select-none"
+                    loading="eager"
+                    draggable={false}
+                  />
+                </TransformComponent>
+              </>
+            )}
+          </TransformWrapper>
+
+          {/* 🔢 Image counter */}
           {images.length > 1 && (
             <div className="absolute bottom-4 left-0 right-0 text-center text-white">
               {currentIndex + 1} / {images.length}

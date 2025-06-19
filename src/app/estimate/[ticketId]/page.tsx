@@ -31,7 +31,7 @@ const EstimatePage = () => {
 	const [loading, setLoading] = useState(false);
 	const [items, setItems] = useState<EstimateItem[]>([]);
 	const [searchQuery, setSearchQuery] = useState('');
-	const [searchResults, setSearchResults] = useState<any[]>([]);
+	const [searchResults, setSearchResults] = useState<EstimateItem[]>([]);
 	const [isSearching, setIsSearching] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveStatus, setSaveStatus] = useState('');
@@ -199,7 +199,8 @@ const EstimatePage = () => {
 				id: `csv-${index}`,
 				name: item['Model'],
 				description: item['Model Number'] || '',
-				price: parseFloat(item['New Price']) || 0
+				price: parseFloat(item['New Price']) || 0,
+				quantity: 1
 			})));
 		} catch (error) {
 			console.error(error);
@@ -446,7 +447,7 @@ const EstimatePage = () => {
 								>
 									<div className="font-medium">{product.name}</div>
 									<div className="text-sm text-gray-600">
-										{product.description.split('; ').map((model: string, i: number) => (
+										{product.description?.split('; ').map((model: string, i: number) => (
 											<div key={i}>• {model.trim()}</div>
 										))}
 									</div>

@@ -19,7 +19,7 @@ const TicketDetails = () => {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId;
-  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [ , setTicket] = useState<Ticket | null>(null);
   const [editedTicket, setEditedTicket] = useState<Partial<Ticket>>({});
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);

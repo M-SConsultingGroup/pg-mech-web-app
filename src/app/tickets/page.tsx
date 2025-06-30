@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import Modal from 'react-modal';
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { IoMdCloseCircleOutline, IoIosArrowDropdown } from "react-icons/io";
 
 export default function Tickets() {
   const router = useRouter();
@@ -21,13 +22,14 @@ export default function Tickets() {
     setStatusFilter,
     assignedToFilter,
     setAssignedToFilter,
+    searchBarFilter,
+    setSearchBarFilter,
     highlightedTicket,
     setHighlightedTicket
   } = useTicketFilters();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<string>(isAdmin ? 'createdAt' : 'priority');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(isAdmin ? 'desc' : 'asc');
-  const [filter, setFilter] = useState<string>('');
   const [assignedUsers, setAssignedUsers] = useState<{ [key: string]: string }>({});
   const [modalProps, setModalProps] = useState<{
     modalType: ModalType;
@@ -157,7 +159,7 @@ export default function Tickets() {
   };
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilter(e.target.value);
+    setSearchBarFilter(e.target.value);
   };
 
   const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -254,9 +256,9 @@ export default function Tickets() {
 
   const filteredTickets = tickets
     .filter((ticket) =>
-      ticket.name.toLowerCase().includes(filter.toLowerCase()) ||
-      ticket.serviceAddress.toLowerCase().includes(filter.toLowerCase()) ||
-      ticket.phoneNumber.toLowerCase().includes(filter.toLowerCase())
+      ticket.name.toLowerCase().includes(searchBarFilter?.toLowerCase() ?? '') ||
+      ticket.serviceAddress.toLowerCase().includes(searchBarFilter?.toLowerCase() ?? '') ||
+      ticket.phoneNumber.toLowerCase().includes(searchBarFilter?.toLowerCase() ?? '')
     )
     .sort((a, b) => {
       if (!sortField) return 0;
@@ -368,17 +370,28 @@ export default function Tickets() {
         {/* Filters */}<div className="filter-buttons flex flex-col md:flex-row flex-wrap justify-between items-center mb-2 space-y-2 md:space-y-0">
           <h1 className="text-3xl font-bold text-gray-800 text-center">{`${statusFilter} ${assignedToFilter === '' ? assignedToFilter : assignedToFilter + '\'s'} Tickets`}</h1>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-            <input
-              type="text"
-              placeholder="Filter by name or address"
-              value={filter}
-              onChange={handleFilterChange}
-              className="border p-1 rounded"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Filter by name or address"
+                value={searchBarFilter || ''}
+                onChange={handleFilterChange}
+                className="border p-2 pr-10 rounded w-full"
+              />
+              {searchBarFilter && (
+                <button
+                  onClick={() => setSearchBarFilter('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
+                  aria-label="Clearsearch"
+                >
+                  <IoMdCloseCircleOutline size={25} />
+                </button>
+              )}
+            </div>
             <select
               value={statusFilter}
               onChange={handleStatusFilterChange}
-              className="border p-1 rounded"
+              className="block px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 ease-in-out cursor-pointer"
             >
               <option value="">All Statuses</option>
               {TICKET_STATUSES.map((status: string) => (
@@ -392,14 +405,15 @@ export default function Tickets() {
                 <select
                   value={assignedToFilter}
                   onChange={handleAssignedToFilterChange}
-                  className="border p-1 rounded"
+                  className="block px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 ease-in-out cursor-pointer"
                 >
                   <option value="">All Users</option>
                   {users.map((user) => (
-                    <option key={user} value={user}>
+                    <option key={user} value={user} className="text-gray-700 hover:bg-blue-50 focus:bg-blue-100 py-1">
                       {user}
                     </option>
                   ))}
+                  <IoIosArrowDropdown className='relative right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black' />
                 </select>
                 <button
                   onClick={() => handleSort('priority')}

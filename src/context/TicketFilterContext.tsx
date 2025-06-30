@@ -1,4 +1,3 @@
-// contexts/TicketFilterContext.tsx
 'use client';
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
@@ -9,6 +8,8 @@ interface TicketFilterContextType {
   setStatusFilter: (filter: string) => void;
   assignedToFilter: string;
   setAssignedToFilter: (filter: string) => void;
+  searchBarFilter: string | null;
+  setSearchBarFilter: (filter: string | null) => void;
   highlightedTicket: string | null;
   setHighlightedTicket: (id: string | null) => void;
 }
@@ -17,8 +18,7 @@ const TicketFilterContext = createContext<TicketFilterContextType | undefined>(u
 
 export const TicketFilterProvider = ({ children }: { children: ReactNode }) => {
   const { isAdmin, username, isPermissionsLoading } = useAuth();
-  
-  // Initialize state with defaults based on auth
+  const [searchBarFilter, setSearchBarFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
   const [highlightedTicket, setHighlightedTicket] = useState<string | null>(null);
@@ -37,7 +37,9 @@ export const TicketFilterProvider = ({ children }: { children: ReactNode }) => {
       assignedToFilter,
       setAssignedToFilter,
       highlightedTicket,
-      setHighlightedTicket
+      setHighlightedTicket,
+      searchBarFilter,
+      setSearchBarFilter
     }}>
       {children}
     </TicketFilterContext.Provider>

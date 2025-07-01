@@ -388,33 +388,49 @@ export default function Tickets() {
                 </button>
               )}
             </div>
-            <select
-              value={statusFilter}
-              onChange={handleStatusFilterChange}
-              className="block px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 ease-in-out cursor-pointer"
-            >
-              <option value="">All Statuses</option>
-              {TICKET_STATUSES.map((status: string) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
+            <div className="relative inline-block">
+              <select
+                value={statusFilter}
+                onChange={handleStatusFilterChange}
+                className="block w-full appearance-none px-2 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 cursor-pointer"
+
+              >
+                <option value="">All Statuses</option>
+                {TICKET_STATUSES.map((status: string) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+              <IoIosArrowDropdown
+                className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
+            </div>
             {isAdmin && (
               <>
-                <select
-                  value={assignedToFilter}
-                  onChange={handleAssignedToFilterChange}
-                  className="block px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 ease-in-out cursor-pointer"
-                >
-                  <option value="">All Users</option>
-                  {users.map((user) => (
-                    <option key={user} value={user} className="text-gray-700 hover:bg-blue-50 focus:bg-blue-100 py-1">
-                      {user}
-                    </option>
-                  ))}
-                  <IoIosArrowDropdown className='relative right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black' />
-                </select>
+                <div className="relative inline-block">
+                  <select
+                    value={assignedToFilter}
+                    onChange={handleAssignedToFilterChange}
+                    className="block w-full appearance-none px-2 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 cursor-pointer"
+                  >
+                    <option value="">All Users</option>
+                    {users.map((user) => (
+                      <option
+                        key={user}
+                        value={user}
+                        className="text-gray-700"
+                      >
+                        {user}
+                      </option>
+                    ))}
+                  </select>
+                  <IoIosArrowDropdown
+                    className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={20}
+                  />
+                </div>
                 <button
                   onClick={() => handleSort('priority')}
                   className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
@@ -422,16 +438,10 @@ export default function Tickets() {
                   Sort by Priority
                 </button>
                 <button
-                  onClick={() => handleSort('name')}
+                  onClick={() => handleSort('createdAt')}
                   className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
                 >
-                  Sort by Name
-                </button>
-                <button
-                  onClick={() => handleSort('serviceAddress')}
-                  className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded shadow-lg transition duration-300"
-                >
-                  Sort by Address
+                  Sort by Created At
                 </button>
               </>
             )}

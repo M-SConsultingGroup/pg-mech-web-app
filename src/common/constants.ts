@@ -5,6 +5,6 @@ export const TICKET_STATUSES = [
     'Need Invoice',
     'Need Estimate',
     'Estimate Sent',
-    'Invoice Sent',
+    'Estimate Approved',
     'Closed',
 ];

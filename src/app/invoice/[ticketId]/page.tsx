@@ -166,7 +166,7 @@ const InvoicePage = () => {
 						<h2 className="text-xl font-semibold">PG Mechanical LLC</h2>
 						<p>1111 Saddlebrook Dr.</p>
 						<p>Murphy, TX 75087</p>
-						<p>Phone: (469) 274-6462</p>
+						<p>Phone: (469) 274-6424</p>
 					</div>
 					<div className="text-right">
 						<h2 className="text-xl font-semibold">INVOICE</h2>

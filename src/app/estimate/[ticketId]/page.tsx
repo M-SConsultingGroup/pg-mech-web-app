@@ -7,6 +7,7 @@ import Papa from 'papaparse';
 import toast from 'react-hot-toast';
 import { Ticket } from '@/common/interfaces';
 import { FaArrowLeftLong } from 'react-icons/fa6';
+import html2pdf from 'html2pdf.js';
 
 interface EstimateItem {
 	id: string;
@@ -242,10 +243,22 @@ const EstimatePage = () => {
 	};
 
 	const handleSave = async () => {
+		const element = document.getElementById('__next');
 		if (isSaving || items.length === 0 || !estimate) return;
 
 		setIsSaving(true);
 		setSaveStatus('');
+
+		const opt = {
+			margin: 0.5,
+			filename: 'estimate.pdf',
+			image: { type: 'jpeg', quality: 0.98 },
+			html2canvas: { scale: 2 },
+			jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+		};
+
+		const pdfBlob = await html2pdf().from(element).set(opt).outputPdf('blob');
+		const reader = new FileReader();
 
 		try {
 			const authToken = localStorage.getItem('token');
@@ -254,27 +267,24 @@ const EstimatePage = () => {
 			}
 
 			const total = calculateTotal();
-			const htmlContent = generateEmailHtml(estimate, items, total);
 
-			const response = await apiFetch('/api/email/send', 'POST', {
-				to: estimate.email,
-				subject: `Estimate #${estimate.ticketNumber} from PG Mechanical LLC`,
-				message: htmlContent,
-				isHtml: true
-			}, authToken);
-
-			if (response.ok) {
-				setSaveStatus('Email sent successfully!');
-				toast.success('Estimate sent via email');
-			} else {
-				const errorData = await response.json();
-				throw new Error(errorData.message || 'Failed to send email');
+			reader.onloadend = async () => {
+				if (typeof reader.result === 'string') {
+					const base64Data = reader?.result?.split(',')[1]; // remove data:application/pdf;base64,
+					await apiFetch(`/api/estimates/${estimate.id}`, 'POST', {
+						ticketId: 'your-ticket-id',
+						fileName: 'estimate.pdf',
+						base64Data
+					}, authToken);
+				};
 			}
+			reader.readAsDataURL(pdfBlob);
 		} catch (error) {
 			console.error('Email sending failed:', error);
 			setSaveStatus(`Error: ${error instanceof Error ? error.message : 'Failed to send email'}`);
 			toast.error('Failed to send email');
 		} finally {
+			setSaveStatus('Estimate saved successfully!');
 			setIsSaving(false);
 		}
 	};
@@ -299,7 +309,7 @@ const EstimatePage = () => {
   `).join('');
 
 		return `
-    <html>
+		<html>
       <body style="font-family: Arial, sans-serif;">
         <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
 					<div style="display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 20px;">
@@ -307,7 +317,7 @@ const EstimatePage = () => {
 							<h2 style="font-size: 20px; font-weight: bold; margin: 0 0 10px 0;">PG Mechanical LLC</h2>
 							<p style="margin: 5px 0;">1111 Saddlebrook Dr.</p>
 							<p style="margin: 5px 0;">Murphy, TX 75087</p>
-							<p style="margin: 5px 0;">Phone: (469) 274-6462</p>
+							<p style="margin: 5px 0;">Phone: (469) 274-6424</p>
 						</div>
 						<div style="width: 50%; text-align: left;">
 							<h2 style="font-size: 20px; font-weight: bold; margin: 0 0 10px 0;">ESTIMATE</h2>
@@ -369,8 +379,7 @@ const EstimatePage = () => {
           </div>
         </div>
       </body>
-    </html>
-  `;
+    </html>`;
 	};
 
 	if (loading) return <div className="text-center py-8">Loading...</div>;
@@ -396,7 +405,7 @@ const EstimatePage = () => {
 						<h2 className="text-xl font-semibold">PG Mechanical LLC</h2>
 						<p>1111 Saddlebrook Dr.</p>
 						<p>Murphy, TX 75087</p>
-						<p>Phone: (469) 274-6462</p>
+						<p>Phone: (469) 274-6424</p>
 					</div>
 					<div className="w-1/2 text-left">
 						<h2 className="text-xl font-semibold">ESTIMATE</h2>

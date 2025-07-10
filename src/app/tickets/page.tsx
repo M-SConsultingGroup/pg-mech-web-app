@@ -322,7 +322,7 @@ export default function Tickets() {
               }}
             >
               <h3 className="text-sm font-medium text-green-700">Need Invoice</h3>
-              <p className="text-2xl font-bold text-green-600">{stats.needInvoice || 0}</p>
+              <p className="text-2xl font-bold text-green-600">{stats['Need Invoice'] || 0}</p>
             </div>
             <div
               className="bg-purple-50 p-3 rounded-md border border-purple-100 cursor-pointer"
@@ -332,7 +332,7 @@ export default function Tickets() {
               }}
             >
               <h3 className="text-sm font-medium text-purple-700">Estimate Sent</h3>
-              <p className="text-2xl font-bold text-purple-600">{stats.estimateSent || 0}</p>
+              <p className="text-2xl font-bold text-purple-600">{stats['Estimate Sent'] || 0}</p>
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/lib/api';
 import { Ticket } from '@/common/interfaces';
+import { IoCloseCircle } from "react-icons/io5";
 
 const html2pdf = typeof window !== 'undefined' ? require('html2pdf.js') : null;
 
@@ -33,8 +34,9 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 	const [saveStatus, setSaveStatus] = useState('');
 	const [csvData, setCsvData] = useState<any[]>([]);
 	const [addOns, setAddOns] = useState<AddOnItem[]>([]);
-	const [selectedAddOnIds, setSelectedAddOnIds] = useState<Set<string>>(new Set());
+	const [, setSelectedAddOnIds] = useState<Set<string>>(new Set());
 	const [showCustomItem, setShowCustomItem] = useState(false);
+	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 	const [customItem, setCustomItem] = useState({
 		name: '',
 		price: 0,
@@ -58,7 +60,7 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 						setTicketData(ticketData);
 					}
 				} catch (error) {
-					console.error('Failed to fetch estimate details:', error);
+					toast.error('Failed to fetch tickets details, please try again later.');
 				} finally {
 					setLoading(false);
 				}
@@ -88,19 +90,31 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 			.catch(() => toast.error('Failed to load add-ons data'));
 	}, []);
 
+	useEffect(() => {
+		fetch('/Pricing sheet 2025 - v1 - Model Pricing.csv')
+			.then((res) => res.text())
+			.then((csvText) => {
+				const result = Papa.parse(csvText, {
+					header: true,
+					skipEmptyLines: true,
+					transformHeader: header => header.trim(),
+					transform: value => value.trim(),
+				});
+				setCsvData(result.data as any[]);
+			})
+			.catch(() => toast.error('Failed to load pricing data'));
+	}, []);
+
 	const toggleAddOn = (addOnId: string) => {
 		setSelectedAddOnIds(prev => {
 			const newSelected = new Set(prev);
 			if (newSelected.has(addOnId)) {
 				newSelected.delete(addOnId);
-				// Remove from items
 				setItems(prevItems => prevItems.filter(item => item.id !== addOnId));
 			} else {
 				newSelected.add(addOnId);
 				setItems(prevItems => {
-					if (prevItems.some(item => item.id === addOnId)) {
-						return prevItems;
-					}
+					if (prevItems.some(item => item.id === addOnId)) return prevItems;
 					const addOn = addOns.find(a => a.id === addOnId);
 					if (addOn) {
 						return [
@@ -120,21 +134,6 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 			return newSelected;
 		});
 	};
-
-	useEffect(() => {
-		fetch('/Pricing sheet 2025 - v1 - Model Pricing.csv')
-			.then((res) => res.text())
-			.then((csvText) => {
-				const result = Papa.parse(csvText, {
-					header: true,
-					skipEmptyLines: true,
-					transformHeader: header => header.trim(),
-					transform: value => value.trim(),
-				});
-				setCsvData(result.data as any[]);
-			})
-			.catch(() => toast.error('Failed to load pricing data'));
-	}, []);
 
 	const addCustomItem = () => {
 		if (!customItem.name.trim()) {
@@ -211,88 +210,78 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 	};
 
 	const handleSave = async () => {
-		const element = document.getElementById('__next');
-		if (isSaving || items.length === 0 || !ticketData) return;
+		const element = document.getElementById('estimate-page');
+		if (isSaving || items.length === 0 || !ticketData || !element) return;
 
 		setIsSaving(true);
 		setSaveStatus('');
 
 		const opt = {
-			margin: 0.5,
+			margin: 0.2,
 			filename: 'estimate.pdf',
 			image: { type: 'jpeg', quality: 0.98 },
-			html2canvas: { scale: 2 },
-			jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+			html2canvas: { scale: 2, ignoreElements: (el: HTMLElement) => el.classList.contains('print:hidden') },
+			pagebreak: { mode: ['avoid-all'] },
+			jsPDF: { unit: 'in', format: 'A4', orientation: 'portrait' },
+			enableLinks: true,
 		};
 
 		const pdfBlob = await html2pdf().from(element).set(opt).outputPdf('blob');
-		const reader = new FileReader();
+		const previewBlobUrl = URL.createObjectURL(pdfBlob);
+		setPreviewUrl(previewBlobUrl);
+	};
 
+	const handleConfirmSave = async () => {
 		try {
-			const authToken = localStorage.getItem('token');
-			if (!authToken) {
-				throw new Error('Not authenticated');
-			}
+			if (!previewUrl || !ticketData) return;
+			setIsSaving(true);
 
-			const total = calculateTotal();
-			reader.onloadend = async () => {
-				if (typeof reader.result === 'string') {
-					const base64Data = reader?.result?.split(',')[1];
-					await apiFetch(`/api/tickets/${ticketData.id}/estimate`, 'POST', {
-						ticketId: ticketData.id,
-						fileName: `estimate-${ticketData.ticketNumber}.pdf`,
-						base64Data
-					}, authToken);
-				}
-			}
-			reader.readAsDataURL(pdfBlob);
-		} catch (error) {
-			setSaveStatus(`Error: ${error instanceof Error ? error.message : 'Failed to send email'}`);
-			toast.error('Failed to send email');
+			const res = await fetch(previewUrl);
+			const pdfBlob = await res.blob();
+
+			const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+				const reader = new FileReader();
+				reader.onloadend = () => {
+					if (reader.result instanceof ArrayBuffer) {
+						resolve(Buffer.from(reader.result));
+					} else {
+						reject(new Error('Failed to convert PDF to Buffer'));
+					}
+				};
+				reader.onerror = reject;
+				reader.readAsArrayBuffer(pdfBlob);
+			});
+
+			const authToken = localStorage.getItem('token');
+			if (!authToken) throw new Error('Not authenticated');
+
+			const index = ticketData.estimateFiles?.length ? ticketData.estimateFiles.length + 1 : 1;
+
+			console.log(pdfBuffer, 'PDF Buffer to be saved');
+			await apiFetch(`/api/tickets/${ticketData.id}/estimates`, 'POST',
+				{
+					index,
+					fileName: `estimate-${ticketData.ticketNumber}-${index}.pdf`,
+					data: pdfBuffer,
+				},
+				authToken
+			);
+
+			toast.success('Estimate saved successfully!');
+			setPreviewUrl(null);
+		} catch (err) {
+			toast.error('Failed to save estimate');
 		} finally {
-			setSaveStatus('Estimate saved successfully!');
 			setIsSaving(false);
 		}
 	};
-
-	useEffect(() => {
-		// Fetch ticket data
-		const fetchTicketData = async () => {
-			try {
-				const res = await fetch(`/api/tickets/${ticketId}`);
-				if (!res.ok) throw new Error('Failed to fetch ticket data');
-				const data = await res.json();
-				setTicketData(data);
-			} catch (error) {
-				console.error(error);
-			}
-		};
-
-		fetchTicketData();
-	}, [ticketId]);
-
-	useEffect(() => {
-		// Fetch add-ons
-		const fetchAddOns = async () => {
-			try {
-				const res = await fetch('/api/addons');
-				if (!res.ok) throw new Error('Failed to fetch add-ons');
-				const data = await res.json();
-				setAddOns(data);
-			} catch (error) {
-				console.error(error);
-			}
-		};
-
-		fetchAddOns();
-	}, []);
 
 	if (loading) return <div className="text-center p-6">Loading...</div>;
 	if (!ticketData) return <div className="text-center p-6">No ticket data found</div>;
 
 	return (
 		<div className="min-h-screen p-4 bg-white print:p-0">
-			<div className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-lg print:shadow-none">
+			<div id='estimate-page' className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-lg print:shadow-none">
 
 				{/* Estimate Header */}
 				<div className="flex justify-between mb-8 border-b pb-4">
@@ -302,7 +291,7 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 						<p>Murphy, TX 75087</p>
 						<p>Phone: (469) 274-6424</p>
 					</div>
-					<div className="w-1/2 text-left">
+					<div className="text-right">
 						<h2 className="text-xl font-semibold">ESTIMATE</h2>
 						<p>Date: {new Date().toLocaleDateString()}</p>
 						<p>Estimate #: {ticketData.ticketNumber}</p>
@@ -367,7 +356,7 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 					<h3 className="text-lg font-semibold mb-2">Add-Ons</h3>
 					<div className="border rounded p-4 mb-4">
 						{addOns.map((addOn) => (
-							<div key={addOn.id} className="flex items-center mb-2">
+							<div key={addOn.id} className="flex items-center mb-1">
 								<input
 									type="checkbox"
 									id={`addon-${addOn.id}`}
@@ -376,7 +365,7 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 								/>
 								<label htmlFor={`addon-${addOn.id}`} className="flex-1">
 									{addOn.name}
-									<span className="text-sm text-gray-600 ml-2">
+									<span className="text-sm text-gray-600 ml-1">
 										{addOn.included ? '(Included)' : `($${addOn.price.toFixed(2)})`}
 									</span>
 								</label>
@@ -386,10 +375,7 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 
 					{/* Custom Item Section */}
 					<div className="border rounded p-4">
-						<button
-							onClick={() => setShowCustomItem(!showCustomItem)}
-							className="text-blue-600 hover:text-blue-800 mb-2"
-						>
+						<button onClick={() => setShowCustomItem(!showCustomItem)} className="text-blue-600 hover:text-blue-800">
 							{showCustomItem ? 'Cancel' : '+ Add Custom Item'}
 						</button>
 
@@ -526,9 +512,9 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 					<button
 						onClick={handleSave}
 						disabled={isSaving || items.length === 0}
-						className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded disabled:bg-green-400"
+						className={`bg-green-600 hover:bg-green-800 text-white px-6 py-2 rounded ${isSaving ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
 					>
-						{isSaving ? 'Sending...' : 'Send Estimate'}
+						{isSaving ? 'Saving ...' : 'Save Estimate'}
 					</button>
 				</div>
 				{saveStatus && (
@@ -537,6 +523,27 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 					</div>
 				)}
 			</div>
+			{previewUrl && (
+				<div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+					<div className="relative bg-gray-600 p-2 rounded shadow-xl max-w-4xl w-full h-[85vh]">
+						<button
+							className="absolute -top-5 -right-5 text-gray-500 hover:text-black"
+							onClick={() => { setPreviewUrl(null); setIsSaving(false); }}
+						>
+							<IoCloseCircle size={30} color='red' />
+						</button>
+						<embed src={previewUrl} type="application/pdf" className="w-full h-full rounded" />
+						<div className="m-6 flex justify-end gap-2">
+							<button onClick={() => { setPreviewUrl(null); setIsSaving(false); }} className="bg-gray-200 hover:bg-gray-300 text-black px-4 py-2 rounded">
+								Cancel
+							</button>
+							<button onClick={handleConfirmSave} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+								Confirm & Save
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 };

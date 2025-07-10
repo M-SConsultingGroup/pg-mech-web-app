@@ -21,6 +21,16 @@ export interface Ticket {
   amountPaid?: string;
   images?: { type: string, default: [] }[];
   priority?: Priority;
+  estimateFiles: EstimateFile[];
+}
+
+export interface EstimateFile {
+	index: number;
+	fileName: string;
+	data: {data: [], type: string};
+	approved?: boolean;
+	contentType: string;
+	uploadedAt: Date;
 }
 
 export interface Parts {

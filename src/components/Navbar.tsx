@@ -72,10 +72,7 @@ const Navbar = () => {
                 <button
                   key={link.path}
                   onClick={() => router.push(link.path)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${pathname === link.path
-                      ? 'bg-blue-800 text-white'
-                      : 'text-blue-100 hover:bg-blue-700 hover:text-white'
-                    }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${pathname === link.path ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-700 hover:text-white'} `}
                 >
                   {link.icon}
                   {link.name}
@@ -150,8 +147,8 @@ const Navbar = () => {
                 key={link.path}
                 onClick={() => router.push(link.path)}
                 className={`w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center ${pathname === link.path
-                    ? 'bg-blue-700 text-white'
-                    : 'text-blue-200 hover:bg-blue-700 hover:text-white'
+                  ? 'bg-blue-700 text-white'
+                  : 'text-blue-200 hover:bg-blue-700 hover:text-white'
                   }`}
               >
                 {link.icon}

@@ -289,7 +289,7 @@ export default function Tickets() {
       {/* Overview */}{isAdmin && (
         <div className="w-full bg-white p-3 rounded-lg shadow mb-3">
           <h1 className="text-xl font-semibold text-gray-800 mb-3">Dashboard Overview</h1>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
             <div className="bg-blue-50 p-3 rounded-md border border-blue-100">
               <h3 className="text-sm font-medium text-blue-700">Total Tickets</h3>
               <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
@@ -298,41 +298,46 @@ export default function Tickets() {
               className="bg-yellow-50 p-3 rounded-md border border-yellow-100 cursor-pointer"
               onClick={() => {
                 setStatusFilter('New');
-                setAssignedToFilter('');
               }}
             >
               <h3 className="text-sm font-medium text-yellow-700">New Tickets</h3>
-              <p className="text-2xl font-bold text-yellow-600">{stats.New || 0}</p>
+              <p className="text-2xl font-bold text-yellow-600">{stats['New'] || 0}</p>
             </div>
             <div
               className="bg-orange-50 p-3 rounded-md border border-orange-100 cursor-pointer"
               onClick={() => {
                 setStatusFilter('Open');
-                setAssignedToFilter('');
               }}
             >
               <h3 className="text-sm font-medium text-orange-700">Open Tickets</h3>
-              <p className="text-2xl font-bold text-orange-600">{stats.Open || 0}</p>
+              <p className="text-2xl font-bold text-orange-600">{stats['Open'] || 0}</p>
             </div>
             <div
               className="bg-green-50 p-3 rounded-md border border-green-100 cursor-pointer"
               onClick={() => {
                 setStatusFilter('Need Invoice');
-                setAssignedToFilter('');
               }}
             >
               <h3 className="text-sm font-medium text-green-700">Need Invoice</h3>
-              <p className="text-2xl font-bold text-green-600">{stats.needInvoice || 0}</p>
+              <p className="text-2xl font-bold text-green-600">{stats['Need Invoice'] || 0}</p>
             </div>
             <div
               className="bg-purple-50 p-3 rounded-md border border-purple-100 cursor-pointer"
               onClick={() => {
                 setStatusFilter('Estimate Sent');
-                setAssignedToFilter('');
               }}
             >
               <h3 className="text-sm font-medium text-purple-700">Estimate Sent</h3>
-              <p className="text-2xl font-bold text-purple-600">{stats.estimateSent || 0}</p>
+              <p className="text-2xl font-bold text-purple-600">{stats['Estimate Sent'] || 0}</p>
+            </div>
+            <div
+              className="bg-slate-50 p-3 rounded-md border border-slate-100 cursor-pointer"
+              onClick={() => {
+                setStatusFilter('Estimate Approved');
+              }}
+            >
+              <h3 className="text-sm font-medium text-slate-700">Estimate Approved</h3>
+              <p className="text-2xl font-bold text-slate-600">{stats['Estimate Approved'] || 0}</p>
             </div>
           </div>
 

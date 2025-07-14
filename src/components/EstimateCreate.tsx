@@ -353,32 +353,12 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 
 				{/* Add Add-Ons Section */}
 				<div className="mb-6 print:hidden">
-					<h3 className="text-lg font-semibold mb-2">Add-Ons</h3>
-					<div className="border rounded p-4 mb-4">
-						{addOns.map((addOn) => (
-							<div key={addOn.id} className="flex items-center mb-1">
-								<input
-									type="checkbox"
-									id={`addon-${addOn.id}`}
-									onChange={() => toggleAddOn(addOn.id)}
-									className="mr-2"
-								/>
-								<label htmlFor={`addon-${addOn.id}`} className="flex-1">
-									{addOn.name}
-									<span className="text-sm text-gray-600 ml-1">
-										{addOn.included ? '(Included)' : `($${addOn.price.toFixed(2)})`}
-									</span>
-								</label>
-							</div>
-						))}
-					</div>
 
 					{/* Custom Item Section */}
 					<div className="border rounded p-4">
 						<button onClick={() => setShowCustomItem(!showCustomItem)} className="text-blue-600 hover:text-blue-800">
 							{showCustomItem ? 'Cancel' : '+ Add Custom Item'}
 						</button>
-
 						{showCustomItem && (
 							<div className="mt-2 space-y-2">
 								<input
@@ -529,6 +509,33 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 					</div>
 				)}
 			</div>
+
+			{addOns.length > 0 && (
+				<div className="fixed top-1/2 right-0 transform -translate-y-1/2 z-40 print:hidden w-80 max-w-full">
+					<div className="bg-white border-l border-t border-b rounded-l-lg shadow-lg p-4">
+						<h3 className="text-md font-semibold mb-2">Add-Ons</h3>
+						<div className="max-h-100 overflow-y-auto pr-2">
+							{addOns.map((addOn) => (
+								<div key={addOn.id} className="flex items-center mb-1">
+									<input
+										type="checkbox"
+										id={`addon-${addOn.id}`}
+										onChange={() => toggleAddOn(addOn.id)}
+										className="mr-2"
+									/>
+									<label htmlFor={`addon-${addOn.id}`} className="flex-1">
+										{addOn.name}
+										<span className="text-sm text-gray-600 ml-1">
+											{addOn.included ? '(Included)' : `($${addOn.price.toFixed(2)})`}
+										</span>
+									</label>
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+			)}
+
 			{previewUrl && (
 				<div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
 					<div className="relative bg-gray-600 p-2 rounded shadow-xl max-w-4xl w-full h-[85vh]">

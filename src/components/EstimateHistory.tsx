@@ -22,7 +22,7 @@ export const EstimateHistory = ({ ticketId }: { ticketId: string }) => {
 					const url = URL.createObjectURL(blob);
 					return {
 						index: file.index,
-						name: file.fileName || `Estimate-${index + 1}.pdf`,
+						name: file.fileName,
 						url,
 					};
 				});

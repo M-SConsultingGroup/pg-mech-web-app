@@ -499,6 +499,12 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 					<p className="text-gray-600 italic">
 						Note: This estimate is valid for 30 days from the date shown above.
 					</p>
+					<span className="text-gray-600 text-xs mt-2 block">
+						Regulated by the Texas Department of Licensing and Regulation<br />
+						P.O. BOX 1215 AUSTIN, TX 78711<br />
+						1-800-803-9202 | 512-463-6599<br />
+						www.tdlr.texas.gov
+					</span>
 				</div>
 
 				{/* Print and Send Buttons */}

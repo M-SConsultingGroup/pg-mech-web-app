@@ -35,22 +35,52 @@ export const EstimateHistory = ({ ticketId }: { ticketId: string }) => {
 		fetchEstimates();
 	}, [ticketId]);
 
+	const handleSendEmail = async () => {
+		const authToken = localStorage.getItem('token');
+		if (!authToken) {
+			toast.error('Not authenticated, Login again to send email.');
+			return;
+		}
+		const response = await apiFetch(`/api/tickets/${ticketId}/email-estimates`, 'POST',
+			{
+				subject: 'Your Estimates from PG Mechanical',
+				message: '<p>Please find your estimates attached.</p>',
+			},
+			authToken);
+
+		const result = await response.json();
+		if (result.success) {
+			toast.success('Estimates emailed successfully!');
+		} else {
+			toast.error('Failed to send email.');
+		}
+	};
+
 	return (
 		<div>
 			<h2 className="text-xl font-bold mb-4">Estimate History</h2>
-			{pdfList.length === 0 ? <p>No estimates found.</p> :
-				<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-					{pdfList.map((pdf) => (
-						<div
-							key={pdf.index}
-							className="border rounded shadow cursor-pointer hover:shadow-lg transition"
-							onClick={() => setPreviewUrl(pdf.url)}
-						>
-							<embed src={pdf.url} type="application/pdf" className="w-full h-48 object-cover" />
-							<p className="p-2 text-center text-sm break-all">{pdf.url.split('/').pop()}</p>
-						</div>
-					))}
-				</div>}
+			{pdfList.length === 0 ? <p>No estimates found.</p> : (
+				<div className="flex flex-col gap-4">
+					<button
+						onClick={handleSendEmail}
+						className="bg-blue-600 text-white p-2 rounded self-end hover:bg-blue-700 transition-colors"
+					>
+						Email Estimates
+					</button>
+					<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+						{pdfList.map((pdf) => (
+							<div
+								key={pdf.index}
+								className="border rounded shadow cursor-pointer hover:shadow-lg transition"
+								onClick={() => setPreviewUrl(pdf.url)}
+							>
+								<embed src={pdf.url} type="application/pdf" className="w-full h-48 object-cover" />
+								<p className="p-2 text-center text-sm break-all">{pdf.url.split('/').pop()}</p>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 
 			{previewUrl && (
 				<div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50">

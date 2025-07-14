@@ -302,7 +302,7 @@ export default function Tickets() {
               }}
             >
               <h3 className="text-sm font-medium text-yellow-700">New Tickets</h3>
-              <p className="text-2xl font-bold text-yellow-600">{stats.new || 0}</p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.New || 0}</p>
             </div>
             <div
               className="bg-orange-50 p-3 rounded-md border border-orange-100 cursor-pointer"
@@ -312,7 +312,7 @@ export default function Tickets() {
               }}
             >
               <h3 className="text-sm font-medium text-orange-700">Open Tickets</h3>
-              <p className="text-2xl font-bold text-orange-600">{stats.open || 0}</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.Open || 0}</p>
             </div>
             <div
               className="bg-green-50 p-3 rounded-md border border-green-100 cursor-pointer"

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { apiFetch } from '@/lib/api';
 import { Ticket } from '@/common/interfaces';
 import { IoCloseCircle } from "react-icons/io5";
+import { FaChevronRight } from 'react-icons/fa6';
 
 const html2pdf = typeof window !== 'undefined' ? require('html2pdf.js') : null;
 
@@ -25,6 +26,7 @@ interface AddOnItem {
 export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 
 	const [ticketData, setTicketData] = useState<Ticket | null>(null);
+	const [isAddOnsOpen, setIsAddOnsOpen] = useState(true)
 	const [loading, setLoading] = useState(false);
 	const [items, setItems] = useState<EstimateItem[]>([]);
 	const [searchQuery, setSearchQuery] = useState('');
@@ -474,7 +476,7 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 					</div>
 				</div>
 
-				{/* Add the note here */}
+				{/* Note */}
 				<div className="mt-4 p-3 bg-gray-50 rounded border-l-4 border-gray-400">
 					<p className="text-gray-600 italic">
 						Note: This estimate is valid for 30 days from the date shown above.
@@ -510,31 +512,40 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 				)}
 			</div>
 
-			{addOns.length > 0 && (
-				<div className="fixed top-1/2 right-0 transform -translate-y-1/2 z-40 print:hidden w-80 max-w-full">
-					<div className="bg-white border-l border-t border-b rounded-l-lg shadow-lg p-4">
-						<h3 className="text-md font-semibold mb-2">Add-Ons</h3>
-						<div className="max-h-100 overflow-y-auto pr-2">
-							{addOns.map((addOn) => (
-								<div key={addOn.id} className="flex items-center mb-1">
-									<input
-										type="checkbox"
-										id={`addon-${addOn.id}`}
-										onChange={() => toggleAddOn(addOn.id)}
-										className="mr-2"
-									/>
-									<label htmlFor={`addon-${addOn.id}`} className="flex-1">
-										{addOn.name}
-										<span className="text-sm text-gray-600 ml-1">
-											{addOn.included ? '(Included)' : `($${addOn.price.toFixed(2)})`}
-										</span>
-									</label>
-								</div>
-							))}
-						</div>
+			<div className={`fixed max-h-100 top-1/2 right-0 -translate-y-1/2 z-20 w-80 print:hidden rounded-lg bg-white shadow-lg transition-all duration-300 ease-in-out ${isAddOnsOpen ? 'translate-x-0' : 'translate-x-60'}`}>
+				<div className="overflow-y-auto p-4">
+					<div className="flex justify-between items-center mb-4">
+						{isAddOnsOpen ? (
+							<button onClick={() => setIsAddOnsOpen(false)} className="text-gray-500 hover:text-gray-700">
+								<FaChevronRight size={20} />
+							</button>
+						) : (
+							<button onClick={() => setIsAddOnsOpen(true)} className="text-gray-500 hover:text-gray-700">
+								<FaChevronRight size={20} className="transform rotate-180" />
+							</button>
+						)}
+						<h3 className="text-lg font-semibold">Add-Ons</h3>
+					</div>
+					<div>
+						{addOns.map((addOn) => (
+							<div key={addOn.id} className="flex items-center p-2 hover:bg-gray-50 rounded">
+								<input
+									type="checkbox"
+									id={`addon-${addOn.id}`}
+									onChange={() => toggleAddOn(addOn.id)}
+									className="mr-2"
+								/>
+								<label htmlFor={`addon-${addOn.id}`} className="flex-1">
+									<div className="font-medium">{addOn.name}</div>
+									<div className="text-sm text-gray-600">
+										{addOn.included ? 'Included' : `$${addOn.price.toFixed(2)}`}
+									</div>
+								</label>
+							</div>
+						))}
 					</div>
 				</div>
-			)}
+			</div>
 
 			{previewUrl && (
 				<div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">

@@ -88,7 +88,6 @@ const InvoicePage = () => {
 				return;
 			}
 
-			// Prepare invoice data with new fields
 			const invoiceData = {
 				ticket,
 				lineItems: [
@@ -119,10 +118,9 @@ const InvoicePage = () => {
 				const result = await response.json();
 				setSquareStatus(`Invoice saved as draft in Square successfully with Invoice Number: ${result.invoiceNumber}`);
 
-				// Update the ticket with the invoice number
 				if (result.invoiceNumber) {
 					try {
-						const updateResponse = await apiFetch(`/api/tickets/${ticketId}`, 'POST', { invoiceNumber: `SQ_${result.invoiceNumber}` }, authToken);
+						const updateResponse = await apiFetch(`/api/tickets/${ticketId}`, 'POST', { status: 'Closed', invoiceNumber: `SQ_${result.invoiceNumber}` }, authToken);
 
 						if (!updateResponse.ok) {
 							toast.error('Failed to update ticket with invoice number');

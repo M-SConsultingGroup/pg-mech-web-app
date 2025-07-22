@@ -425,13 +425,24 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 									<tr key={index} className="border-b">
 										<td className="p-2 border">
 											<div className="font-medium">{item.name}</div>
-											{item.description && (
+											{item.description ? (
 												<div className="text-sm text-gray-600">
 													{item.description.split('; ').map((model, i) => (
 														<div key={i}>• {model.trim()}</div>
 													))}
 												</div>
-											)}
+											) : (<input
+												type="text"
+												defaultValue={item.description || ''}
+												onKeyDown={(e) => {
+													if (e.key === 'Enter') {
+														updateItem(index, 'description', (e.target as HTMLInputElement).value);
+														e.preventDefault();
+													}
+												}}
+												className="w-48 my-2 text-left border rounded p-1 print:border-none print:bg-transparent"
+												placeholder="Description"
+											/>)}
 										</td>
 										<td className="p-2 border text-right">
 											<input
@@ -513,7 +524,7 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 			</div>
 
 			<div className={`fixed max-h-100 top-1/2 right-0 -translate-y-1/2 z-20 w-80 print:hidden rounded-lg bg-white shadow-lg transition-all duration-300 ease-in-out ${isAddOnsOpen ? 'translate-x-0' : 'translate-x-60'}`}>
-				<div className="overflow-y-auto p-4">
+				<div className="overflow-y-auto p-2">
 					<div className="flex justify-between items-center mb-4">
 						{isAddOnsOpen ? (
 							<button onClick={() => setIsAddOnsOpen(false)} className="text-gray-500 hover:text-gray-700">
@@ -528,7 +539,7 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 					</div>
 					<div>
 						{addOns.map((addOn) => (
-							<div key={addOn.id} className="flex items-center p-2 hover:bg-gray-50 rounded">
+							<div key={addOn.id} className="flex items-center hover:bg-gray-50 rounded">
 								<input
 									type="checkbox"
 									id={`addon-${addOn.id}`}

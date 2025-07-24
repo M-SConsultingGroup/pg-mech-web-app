@@ -280,13 +280,12 @@ export default function Tickets() {
       return 0;
     });
 
-  const displayedTickets = isAdmin
-    ? filteredTickets
-    : filteredTickets.filter((ticket) => ticket.assignedTo === username);
+  const displayedTickets = isAdmin ? filteredTickets : filteredTickets.filter((ticket) => ticket.assignedTo === username);
 
   return (
     <div id="table" className="min-h-screen p-4 pb-10 flex flex-col items-center bg-gray-100 space-y-2">
-      {/* Overview */}{isAdmin && (
+      {/* Overview */}
+      {isAdmin && (
         <div className="w-full bg-white p-3 rounded-lg shadow mb-3">
           <h1 className="text-xl font-semibold text-gray-800 mb-3">Dashboard Overview</h1>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
@@ -384,10 +383,18 @@ export default function Tickets() {
           </div>
         </div>
       )}
+      {/* Filters */}
       <div className="w-full bg-white p-4 rounded-lg shadow-lg">
-        {/* Filters */}<div className="filter-buttons flex flex-col md:flex-row flex-wrap justify-between items-center mb-2 space-y-2 md:space-y-0">
-          <h1 className="text-3xl font-bold text-gray-800 text-center">{`${statusFilter} ${assignedToFilter === '' ? assignedToFilter : assignedToFilter + '\'s'} Tickets`}</h1>
-          <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+        <div className="filter-buttons flex flex-col md:flex-row flex-wrap gap-2 items-center mb-2 space-y-2 md:space-y-0 md:justify-between">
+          <div className="flex flex-col items-start">
+            <h1 className="text-2xl font-bold text-gray-700 mb-0">
+              {`${statusFilter} ${assignedToFilter === '' ? assignedToFilter : assignedToFilter + '\'s'} Tickets`}
+            </h1>
+            <p className="text-sm text-gray-500 mt-0">
+              {displayedTickets.length} tickets found
+            </p>
+          </div>
+          <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 items-end md:items-center w-full md:w-auto md:justify-end">
             <div className="relative">
               <input
                 type="text"
@@ -411,7 +418,6 @@ export default function Tickets() {
                 value={statusFilter}
                 onChange={handleStatusFilterChange}
                 className="block w-full appearance-none px-2 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 cursor-pointer"
-
               >
                 <option value="">All Statuses</option>
                 {TICKET_STATUSES.map((status: string) => (

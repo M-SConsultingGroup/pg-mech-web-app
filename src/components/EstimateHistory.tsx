@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '@/lib/api';
-import { EstimateFile } from '@/common/interfaces';
+import { EstimateFile, Ticket } from '@/common/interfaces';
 import { IoCloseCircle } from "react-icons/io5";
 
-export const EstimateHistory = ({ ticketId }: { ticketId: string }) => {
+export const EstimateHistory = ({ ticketData }: { ticketData: Ticket }) => {
 	const [pdfList, setPdfList] = useState<{ index: number, name: string; url: string; }[]>([]);
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -14,7 +14,7 @@ export const EstimateHistory = ({ ticketId }: { ticketId: string }) => {
 			if (!authToken) return;
 
 			try {
-				const res = await apiFetch(`/api/tickets/${ticketId}/estimates`, 'GET', undefined, authToken);
+				const res = await apiFetch(`/api/tickets/${ticketData.id}/estimates`, 'GET', undefined, authToken);
 				const data: EstimateFile[] = await res.json();
 				const pdfs = data.map((file, index) => {
 					const byteArray = new Uint8Array(file.data.data);
@@ -33,7 +33,7 @@ export const EstimateHistory = ({ ticketId }: { ticketId: string }) => {
 		};
 
 		fetchEstimates();
-	}, [ticketId]);
+	}, [ticketData.id]);
 
 	const handleSendEmail = async () => {
 		const authToken = localStorage.getItem('token');
@@ -41,7 +41,7 @@ export const EstimateHistory = ({ ticketId }: { ticketId: string }) => {
 			toast.error('Not authenticated, Login again to send email.');
 			return;
 		}
-		const response = await apiFetch(`/api/tickets/${ticketId}/email-estimates`, 'POST',
+		const response = await apiFetch(`/api/tickets/${ticketData.id}/email-estimates`, 'POST',
 			{
 				subject: 'Your Estimates from PG Mechanical',
 				message: '<p>Please find your estimates attached.</p>',
@@ -58,12 +58,11 @@ export const EstimateHistory = ({ ticketId }: { ticketId: string }) => {
 
 	return (
 		<div>
-			<h2 className="text-xl font-bold mb-4">Estimate History</h2>
 			{pdfList.length === 0 ? <p>No estimates found.</p> : (
-				<div className="flex flex-col gap-4">
+				<div className="flex flex-col">
 					<button
 						onClick={handleSendEmail}
-						className="bg-blue-600 text-white p-2 rounded self-end hover:bg-blue-700 transition-colors"
+						className="bg-blue-600 text-white p-2 m-2 rounded self-center hover:bg-blue-700 transition-colors"
 					>
 						Email Estimates
 					</button>

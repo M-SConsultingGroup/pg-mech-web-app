@@ -3,9 +3,9 @@
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Ticket } from '@/common/interfaces';
 import { apiFetch } from '@/lib/api';
-import { FaArrowLeftLong } from 'react-icons/fa6';
+import { Ticket } from '@/common/interfaces';
+import { TicketTabs } from '@/components/TicketTabs';
 
 const InvoicePage = () => {
 	const router = useRouter();
@@ -88,7 +88,6 @@ const InvoicePage = () => {
 				return;
 			}
 
-			// Prepare invoice data with new fields
 			const invoiceData = {
 				ticket,
 				lineItems: [
@@ -119,10 +118,9 @@ const InvoicePage = () => {
 				const result = await response.json();
 				setSquareStatus(`Invoice saved as draft in Square successfully with Invoice Number: ${result.invoiceNumber}`);
 
-				// Update the ticket with the invoice number
 				if (result.invoiceNumber) {
 					try {
-						const updateResponse = await apiFetch(`/api/tickets/${ticketId}`, 'POST', { invoiceNumber: `SQ_${result.invoiceNumber}` }, authToken);
+						const updateResponse = await apiFetch(`/api/tickets/${ticketId}`, 'POST', { status: 'Closed', invoiceNumber: `SQ_${result.invoiceNumber}` }, authToken);
 
 						if (!updateResponse.ok) {
 							toast.error('Failed to update ticket with invoice number');
@@ -148,19 +146,8 @@ const InvoicePage = () => {
 
 	return (
 		<div className="min-h-screen p-4 bg-white print:p-0">
+			<TicketTabs ticketId={ticket.id!} ticketNumber={ticket.ticketNumber!} activeTab="invoice" />
 			<div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg print:shadow-none">
-				{/* Header with back button (hidden when printing) */}
-				<div className="flex items-center mb-6 print:hidden">
-					<button
-						onClick={() => router.back()}
-						className="mr-4 p-2 rounded-full hover:bg-gray-100"
-					>
-						<FaArrowLeftLong size={16} /> 
-					</button>
-					<h1 className="text-2xl font-bold">Invoice</h1>
-				</div>
-
-				{/* Invoice Header */}
 				<div className="flex justify-between mb-8 border-b pb-4">
 					<div>
 						<h2 className="text-xl font-semibold">PG Mechanical LLC</h2>

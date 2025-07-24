@@ -14,12 +14,13 @@ import { TICKET_STATUSES } from '@/common/constants';
 import partsData from '@/common/partslist.json' assert { type: 'json' };
 import { apiFetch } from '@/lib/api';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { TicketTabs } from '@/components/TicketTabs';
 
 const TicketDetails = () => {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId;
-  const [ , setTicket] = useState<Ticket | null>(null);
+  const [, setTicket] = useState<Ticket | null>(null);
   const [editedTicket, setEditedTicket] = useState<Partial<Ticket>>({});
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -282,26 +283,7 @@ const TicketDetails = () => {
 
   return (
     <div className="min-h-screen p-4 pb-10 bg-gray-100 relative">
-      <div className="flex items-center mb-4">
-        <button onClick={() => router.back()} className="mr-2">
-          <FaArrowLeftLong />
-        </button>
-        <h1 className="text-2xl font-bold text-gray-800">Edit Ticket #{editedTicket.ticketNumber}</h1>
-        <div className="ml-auto gap-2 flex">
-          <button
-            onClick={() => router.push(`/estimate/${ticketId}`)}
-            className="bg-cyan-400 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors items-center flex gap-2"
-          >
-            <MdFindInPage size={20} /> <span>Generate Estimate</span>
-          </button>
-          <button
-            onClick={() => router.push(`/invoice/${ticketId}`)}
-            className="bg-emerald-400 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition-colors items-center flex gap-2"
-          >
-            <FaPrint size={16} /> <span>Print Invoice</span>
-          </button>
-        </div>
-      </div>
+      <TicketTabs ticketId={editedTicket.id!} ticketNumber={editedTicket.ticketNumber!} activeTab="details" />
 
       <div className="w-full mx-auto bg-white p-6 rounded-lg shadow-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -368,6 +350,18 @@ const TicketDetails = () => {
 
           {/* Right Column */}
           <div className="space-y-4">
+            <div>
+              <label className="block mb-1 text-gray-700 font-medium">Assigned To</label>
+              <input
+                type="text"
+                name="assignedTo"
+                value={editedTicket.assignedTo || ''}
+                onChange={handleInputChange}
+                className="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-600 bg-gray-100"
+                disabled
+              />
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block mb-1 text-gray-700 font-medium">Status</label>

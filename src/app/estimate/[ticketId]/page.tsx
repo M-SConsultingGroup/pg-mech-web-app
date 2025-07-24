@@ -1,41 +1,56 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
-import { useState } from 'react';
-import { FaArrowLeftLong } from 'react-icons/fa6';
+import { useState, useEffect } from 'react';
 import { CreateEstimate } from '@/components/EstimateCreate';
 import { EstimateHistory } from '@/components/EstimateHistory';
+import { TicketTabs } from '@/components/TicketTabs';
+import { Ticket } from '@/common/interfaces';
+import { apiFetch } from '@/lib/api';
 
 const EstimatePage = () => {
 	const router = useRouter();
 	const params = useParams();
 	const ticketId = params.ticketId;
 	const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
+	const [ticketData, setTicketData] = useState<Ticket | null>(null);
+	const [loading, setLoading] = useState(false);
+
+	useEffect(() => {
+		if (ticketId) {
+			const fetchData = async () => {
+				setLoading(true);
+				const authToken = localStorage.getItem('token');
+				if (!authToken) {
+					setLoading(false);
+					return;
+				}
+
+				try {
+					const ticketRes = await apiFetch(`/api/tickets/${ticketId}`, 'GET', undefined, authToken);
+					if (ticketRes.ok) {
+						const ticketData = await ticketRes.json();
+						setTicketData(ticketData);
+					}
+				} catch (error) {
+					console.error('Failed to fetch ticket details');
+				} finally {
+					setLoading(false);
+				}
+			};
+			fetchData();
+		}
+	}, [ticketId]);
 
 	return (
 		<div className="min-h-screen p-4 bg-white">
-			{/* Back Button Header */}
-			<div className="flex items-center mb-6 print:hidden">
-				<button
-					onClick={() => router.back()}
-					className="mr-4 p-2 rounded-full hover:bg-gray-100 transition"
-				>
-					<FaArrowLeftLong size={18} />
-				</button>
-				<h1 className="text-2xl font-bold">Estimate</h1>
-			</div>
-
-			{/* Tab Navigation */}
-			<div className="flex gap-2 mb-6 border-b border-gray-300">
+			<TicketTabs ticketId={ticketId as string} ticketNumber={ticketData?.ticketNumber as string} activeTab="estimate" />
+			<div className="flex gap-2 border-b border-gray-300">
 				{['create', 'history'].map((tab) => (
 					<button
 						key={tab}
 						onClick={() => setActiveTab(tab as 'create' | 'history')}
-						className={`relative px-4 py-2 text-sm font-medium transition-colors duration-300
-            ${activeTab === tab
-								? 'text-blue-600'
-								: 'text-gray-600 hover:text-blue-500'
-							}`}
+						className={`relative px-4 py-2 text-sm font-medium transition-colors duration-300 ${activeTab === tab ? 'text-blue-600' : 'text-gray-600 hover:text-blue-500'}`}
 					>
 						{tab === 'create' ? 'Create Estimate' : 'Estimate History'}
 						{activeTab === tab && (
@@ -47,8 +62,14 @@ const EstimatePage = () => {
 
 			{/* Tab Content */}
 			<div>
-				{activeTab === 'create' && <CreateEstimate ticketId={ticketId as string} />}
-				{activeTab === 'history' && <EstimateHistory ticketId={ticketId as string} />}
+				{loading && <div className="text-center text-gray-500">Loading...</div>}
+				{!loading && !ticketData && <div className="text-center text-red-500">Ticket not found</div>}
+				{ticketData && (
+					<>
+						{ activeTab === 'create' && <CreateEstimate ticketData={ticketData} /> }
+						{ activeTab === 'history' && <EstimateHistory ticketData={ticketData} /> }
+					</>
+				)}
 			</div>
 		</div>
 	)

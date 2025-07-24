@@ -23,11 +23,9 @@ interface AddOnItem {
 	included: boolean;
 }
 
-export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
+export const CreateEstimate = ({ ticketData }: { ticketData: Ticket }) => {
 
-	const [ticketData, setTicketData] = useState<Ticket | null>(null);
 	const [isAddOnsOpen, setIsAddOnsOpen] = useState(true)
-	const [loading, setLoading] = useState(false);
 	const [items, setItems] = useState<EstimateItem[]>([]);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchResults, setSearchResults] = useState<EstimateItem[]>([]);
@@ -44,32 +42,6 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 		price: 0,
 		quantity: 1,
 	});
-
-	useEffect(() => {
-		if (ticketId) {
-			const fetchData = async () => {
-				setLoading(true);
-				const authToken = localStorage.getItem('token');
-				if (!authToken) {
-					setLoading(false);
-					return;
-				}
-
-				try {
-					const ticketRes = await apiFetch(`/api/tickets/${ticketId}`, 'GET', undefined, authToken);
-					if (ticketRes.ok) {
-						const ticketData = await ticketRes.json();
-						setTicketData(ticketData);
-					}
-				} catch (error) {
-					toast.error('Failed to fetch tickets details, please try again later.');
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchData();
-		}
-	}, [ticketId]);
 
 	useEffect(() => {
 		fetch('/Pricing sheet 2025 - v1 - AddOns.csv')
@@ -277,9 +249,6 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 			setIsSaving(false);
 		}
 	};
-
-	if (loading) return <div className="text-center p-6">Loading...</div>;
-	if (!ticketData) return <div className="text-center p-6">No ticket data found</div>;
 
 	return (
 		<div className="min-h-screen p-4 bg-white print:p-0">
@@ -523,9 +492,9 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 				)}
 			</div>
 
-			<div className={`fixed max-h-100 top-1/2 right-0 -translate-y-1/2 z-20 w-80 print:hidden rounded-lg bg-white shadow-lg transition-all duration-300 ease-in-out ${isAddOnsOpen ? 'translate-x-0' : 'translate-x-60'}`}>
+			<div className={`fixed max-h-100 top-1/2 right-0 -translate-y-1/4 z-20 w-80 print:hidden rounded-lg bg-white shadow-lg transition-all duration-300 ease-in-out ${isAddOnsOpen ? 'translate-x-0' : 'translate-x-72'}`}>
 				<div className="overflow-y-auto p-2">
-					<div className="flex justify-between items-center mb-4">
+					<div className="flex justify-between items-center mb-2">
 						{isAddOnsOpen ? (
 							<button onClick={() => setIsAddOnsOpen(false)} className="text-gray-500 hover:text-gray-700">
 								<FaChevronRight size={20} />
@@ -535,9 +504,9 @@ export const CreateEstimate = ({ ticketId }: { ticketId: string }) => {
 								<FaChevronRight size={20} className="transform rotate-180" />
 							</button>
 						)}
-						<h3 className="text-lg font-semibold">Add-Ons</h3>
+						<h2 className="text-xl font-bold">Add-Ons</h2>
 					</div>
-					<div>
+					<div className='pl-6'>
 						{addOns.map((addOn) => (
 							<div key={addOn.id} className="flex items-center hover:bg-gray-50 rounded">
 								<input

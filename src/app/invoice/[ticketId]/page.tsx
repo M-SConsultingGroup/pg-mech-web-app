@@ -19,9 +19,10 @@ const InvoicePage = () => {
 	const [squareStatus, setSquareStatus] = useState('');
 	const [paymentMethods, setPaymentMethods] = useState({
 		card: true,
-		bankAccount: false
+		bankAccount: true
 	});
 	const [warranties, setWarranties] = useState({
+		tuneUp: false,
 		labor: false,
 		manufacture: false
 	});
@@ -83,11 +84,6 @@ const InvoicePage = () => {
 				throw new Error('Not authenticated');
 			}
 
-			if (!ticket?.servicesDelivered || ticket.servicesDelivered.trim() === '') {
-				toast.error('Please add services delivered before saving to Square');
-				return;
-			}
-
 			const invoiceData = {
 				ticket,
 				lineItems: [
@@ -96,6 +92,12 @@ const InvoicePage = () => {
 						quantity: 1,
 						price: partPrices[part] || 0
 					})) || []),
+					...(warranties.tuneUp ? [{
+						name: 'Tune-Up Service',
+						quantity: 1,
+						price: 0,
+						notes: 'Tuned up system, checked refrigerant levels and capacitor. Washed condenser coil.'
+					}] : []),
 					...(warranties.labor ? [{
 						name: 'Labor Warranty',
 						quantity: 1,
@@ -251,6 +253,15 @@ const InvoicePage = () => {
 				<div className="mb-8">
 					<h3 className="text-lg font-semibold mb-2">Warranties</h3>
 					<div className="space-y-2">
+						<label className="flex items-center">
+							<input
+								type="checkbox"
+								checked={warranties.tuneUp}
+								onChange={(e) => setWarranties({ ...warranties, tuneUp: e.target.checked })}
+								className="mr-2"
+							/>
+							Add Tune-up Line Item
+						</label>
 						<label className="flex items-center">
 							<input
 								type="checkbox"

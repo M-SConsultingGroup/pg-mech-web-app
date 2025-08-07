@@ -137,7 +137,7 @@ export const EstimateHistory = ({ ticketData }: { ticketData: Ticket }) => {
 					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 						{pdfList.map((pdf) => (
 							<div
-								key={pdf.index}
+								key={pdf.name}
 								className="border rounded-lg shadow-md cursor-pointer hover:shadow-lg transition overflow-hidden"
 								onClick={() => setPreviewUrl(pdf.url)}
 							>
@@ -146,7 +146,7 @@ export const EstimateHistory = ({ ticketData }: { ticketData: Ticket }) => {
 										src={pdf.url}
 										className="w-full h-full"
 										onError={() => handleIframeError(pdf.url)}
-										title={`PDF Preview ${pdf.index}`}
+										title={`PDF Preview ${pdf.name}`}
 									/>
 								</div>
 								<p className="p-2 text-center text-sm truncate" title={pdf.name}>
